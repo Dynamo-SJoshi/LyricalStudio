@@ -10,7 +10,7 @@ import { detectLang, lineAt } from "@/lib/lyrics/parse";
 import type { LyricsStatus } from "@/lib/lyrics/useTrackData";
 import { chooseScene, TEMPLATES, type Scene, type TemplateChoice } from "@/templates";
 import { FitBox } from "@/templates/FitBox";
-import { langAttr, vivid } from "@/templates/shared";
+import { langAttr } from "@/templates/shared";
 import { TitleCard } from "./TitleCard";
 
 /** No continuous camera zoom: scaling text over a whole line makes the browser draw it as a
@@ -120,8 +120,13 @@ export function LyricsStage({ track, lines, status, palette, seed, genre, lyrics
       </FitBox>
     );
   } else if (pos.mode === "gap") {
+    // a long instrumental: the song's title card (no "loading"-looking dots)
     key = `gap-${pos.line}`;
-    content = <Interlude color={vivid(palette.accents[pos.line % 3])} />;
+    content = (
+      <FitBox>
+        <TitleCard track={track} palette={palette} small />
+      </FitBox>
+    );
   } else {
     const line = lines[pos.line];
     const lineSeed = (seed ^ hashString(line.text)) >>> 0;
@@ -203,16 +208,6 @@ export function LineText({
       <FitBox disabled={scene.template === "graph"} tilt={scene.tilt * 1.3} zoom={CAMERA_ZOOM} insets={line.sub ? { bottom: 0.16 } : undefined}>
         <Template line={line} revealed={revealed} palette={palette} seed={seed} />
       </FitBox>
-    </div>
-  );
-}
-
-function Interlude({ color }: { color: string }) {
-  return (
-    <div className="flex gap-4" aria-label="Instrumental">
-      {[0, 1, 2].map((i) => (
-        <span key={i} className="interlude-dot block size-4 rounded-full" style={{ background: color, animationDelay: `${i * 0.22}s` }} />
-      ))}
     </div>
   );
 }

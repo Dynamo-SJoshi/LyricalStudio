@@ -83,13 +83,6 @@ body {
   }
 }
 
-/* ---------- Instrumental break dots ---------- */
-.interlude-dot { animation: breathe 1.6s var(--ease-spring) infinite; opacity: 0.35; }
-@keyframes breathe {
-  0%, 100% { transform: scale(0.7); opacity: 0.35; }
-  50% { transform: scale(1.15); opacity: 1; }
-}
-
 /* ---------- Range sliders (progress, volume) ---------- */
 .range {
   -webkit-appearance: none;

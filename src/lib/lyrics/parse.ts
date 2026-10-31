@@ -199,8 +199,13 @@ export function buildLines(input: RawLine[], songDuration?: number): LyricLine[]
     // Singers often hold a line far longer than our word estimate, so the line stays
     // up until the next one. Only a marked break, a very long silence, or the song's
     // last line ends it early (that's when the instrumental dots appear).
-    let end = next;
-    if (!explicitBreak && (gap > 14 || !nextRaw)) end = Math.min(next, Math.max(lastWordEnd + 5, r.start + 9));
+    // Keep the line up until the next one. Only a real instrumental break (10 s+ of no
+    // lyrics, marked or not) or the song's last line ends it early; short pauses never do.
+    let nextSung = next;
+    for (let k = i + 1; k < raw.length; k++) if (raw[k].text) { nextSung = raw[k].start; break; }
+    let end = nextSung;
+    if (!nextRaw || nextSung - lastWordEnd > 14) end = Math.min(nextSung, Math.max(lastWordEnd + 5, r.start + 9));
+    else if (explicitBreak && nextSung - next >= 10) end = next;
     lines.push({
       text: r.text,
       start: r.start,
