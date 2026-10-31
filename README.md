@@ -7,20 +7,20 @@ Inspired by the [Cotodama Lyric Speaker](https://cotodama-speaker.com/). Not aff
 ## Features
 
 - Search and play almost any song for free (YouTube Music catalog)
-- Lyrics synced to playback and animated word by word
+- Time-synced lyrics, word by word where the source has word timings, animated as they're sung
 - Seven Cotodama-style text layouts (Stack, Slide, Zoom, Letters, Scatter, Graph, Flow), picked per line from the song's genre, pace and chorus, or chosen by hand
 - A Liquid Glass background drawn on the GPU (WebGL): flowing album-colored light under an undulating glass slab, with ripples spreading from each word as it's sung and a wave of light on every new line
-- Premium type: clean white lyrics with one soft, luminous highlight per line in the album's tint
-- Smooth, cinematic motion: gliding springs, a slow camera push-in, squash-and-stretch word entrances and ghost-trail motion blur
+- White lyrics with vivid highlights in the album's colors, on randomly chosen words that change every time a song plays
+- Smooth motion on the GPU compositor: gliding springs, squash-and-stretch word entrances and trail motion blur; text stays crisp once it settles
+- Instrumental breaks show the song's title card; short pauses keep the last line on screen
 - Lines always fit on screen, whatever the song, language or window size
 - A home screen with suggestions: Quick picks and playlists from YouTube Music, "Made for you" radio, recently played and liked songs
 - Up next fills itself with related songs, and keeps going when the queue ends
-- Pop-up queue and an enlargeable video from the right-hand icons; full-screen mode (F)
+- Up next and video buttons in the header (pop-up queue, enlargeable video); full-screen mode (F)
 - Lyrics for recently played songs are kept in the browser, so they still show if the lyrics service is down
 - Press Shift+F for a frame-rate meter
 - English, Japanese (日本語) and Hindi (हिन्दी); romanized lines appear as subtitles
 - Per-song sync nudge if lyrics run early or late
-- Liked songs, recently played, and an up-next queue
 - Optional login (Google, GitHub or email link) through Supabase
 
 ### Keyboard shortcuts
@@ -39,7 +39,7 @@ Inspired by the [Cotodama Lyric Speaker](https://cotodama-speaker.com/). Not aff
 
 | Part | Source |
 | --- | --- |
-| Playback | The official [YouTube IFrame Player API](https://developers.google.com/youtube/iframe_api_reference) (shown as a small video tile, as YouTube requires) |
+| Playback | The official [YouTube IFrame Player API](https://developers.google.com/youtube/iframe_api_reference) (a small floating mini-player, at least 200×200 as YouTube requires) |
 | Song search | YouTube Music, through [youtubei.js](https://github.com/LuanRT/YouTube.js) |
 | Artwork and metadata | [iTunes Search API](https://performance-partners.apple.com/search-api) |
 | Synced lyrics | [lrcmux](https://lrcmux.dev) (open source; word-synced where available, e.g. Deezer / KuGou), then [LRCLIB](https://lrclib.net) |
