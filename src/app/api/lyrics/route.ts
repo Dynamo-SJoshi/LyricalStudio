@@ -1,4 +1,4 @@
-import { findLyricsSafe } from "@/lib/lyrics/lrclib";
+import { findLyricsAnySource } from "@/lib/lyrics/sources";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -7,7 +7,9 @@ export async function GET(request: Request) {
   if (!title || !artist) return Response.json({ error: "title and artist are required" }, { status: 400 });
 
   const durationParam = Number(searchParams.get("duration"));
-  const { lyrics, unavailable } = await findLyricsSafe({
+  const videoId = searchParams.get("videoId") ?? undefined;
+  const { lyrics, unavailable, upgradeLater } = await findLyricsAnySource({
+    videoId: videoId && /^[\w-]{6,20}$/.test(videoId) ? videoId : undefined,
     title,
     artist,
     album: searchParams.get("album") ?? undefined,
@@ -20,13 +22,17 @@ export async function GET(request: Request) {
   }
 
   return Response.json(
-    { lyrics },
+    { lyrics, upgradeLater },
     {
       headers: {
         // found lyrics rarely change; cache misses briefly so they can be retried
-        "Cache-Control": lyrics
-          ? "public, s-maxage=86400, stale-while-revalidate=604800"
-          : "public, s-maxage=300",
+        "Cache-Control": upgradeLater
+          ? "no-store"
+          : lyrics?.synced
+            ? "public, s-maxage=86400, stale-while-revalidate=604800"
+            : lyrics
+              ? "public, s-maxage=3600"
+              : "public, s-maxage=300",
       },
     },
   );

@@ -14,6 +14,8 @@ type Loaded = {
   meta: TrackMeta;
   /** the lyrics service was unreachable (not the same as "this song has no lyrics") */
   unavailable?: boolean;
+  /** plain lyrics shown while LRCLIB is down: check again for synced ones */
+  upgradeLater?: boolean;
 };
 
 const cache = new Map<string, Promise<Loaded>>();
@@ -27,24 +29,26 @@ function load(track: Track): Promise<Loaded> {
     const q = new URLSearchParams({ title: track.title, artist: track.artist });
     if (track.album) q.set("album", track.album);
     if (track.durationSec) q.set("duration", String(track.durationSec));
+    q.set("videoId", track.videoId);
     const cached = readCachedLyrics(key);
     p = Promise.all([
       cached
         ? Promise.resolve({ lyrics: cached, unavailable: false })
         : fetch(`/api/lyrics?${q}`)
             .then((r) => r.json())
-            .then((d: { lyrics?: LyricsResult | null; unavailable?: boolean }) => {
-              if (d.lyrics) writeCachedLyrics(key, d.lyrics);
-              return { lyrics: d.lyrics ?? null, unavailable: !!d.unavailable };
+            .then((d: { lyrics?: LyricsResult | null; unavailable?: boolean; upgradeLater?: boolean }) => {
+              // keep only synced lyrics offline: plain ones may be upgraded later
+              if (d.lyrics?.synced || d.lyrics?.instrumental) writeCachedLyrics(key, d.lyrics);
+              return { lyrics: d.lyrics ?? null, unavailable: !!d.unavailable, upgradeLater: !!d.upgradeLater };
             })
-            .catch(() => ({ lyrics: null, unavailable: true })),
+            .catch(() => ({ lyrics: null, unavailable: true, upgradeLater: false })),
       fetch(`/api/meta?${q}`)
         .then((r) => r.json())
         .then((d: { meta?: TrackMeta }) => d.meta ?? {})
         .catch(() => ({})),
-    ]).then(([l, meta]) => ({ key, lyrics: l.lyrics, unavailable: l.unavailable, meta }));
-    // don't cache failures: outages are retried soon, "not found" after a minute
-    p.then((v) => !v.lyrics && setTimeout(() => cache.delete(key), v.unavailable ? 0 : 60_000));
+    ]).then(([l, meta]) => ({ key, lyrics: l.lyrics, unavailable: l.unavailable, upgradeLater: "upgradeLater" in l ? l.upgradeLater : false, meta }));
+    // don't cache failures or stand-ins: outages/upgrades are retried soon, "not found" after a minute
+    p.then((v) => (!v.lyrics || v.upgradeLater) && setTimeout(() => cache.delete(key), v.unavailable || v.upgradeLater ? 0 : 60_000));
     cache.set(key, p);
   }
   return p;
@@ -59,8 +63,9 @@ export function useTrackData(track: Track | null, playerDuration: number) {
   // when the lyrics service is down, try again every 20 s while this song plays
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
-    if (!loaded?.unavailable || loaded.key !== key) return;
-    const id = setTimeout(() => setAttempt((a) => a + 1), 20_000);
+    if (!loaded || loaded.key !== key || !(loaded.unavailable || loaded.upgradeLater)) return;
+    // no lyrics at all: retry soon; plain stand-in lyrics: look for synced ones each minute
+    const id = setTimeout(() => setAttempt((a) => a + 1), loaded.unavailable ? 20_000 : 60_000);
     return () => clearTimeout(id);
   }, [loaded, key]);
 
@@ -104,6 +109,7 @@ export function useTrackData(track: Track | null, playerDuration: number) {
     palette,
     seed,
     genre: current?.meta.genre,
+    lyricsCredit: current?.lyrics?.credit,
     artwork: current?.meta.artworkHiRes ?? track?.artwork,
   };
 }

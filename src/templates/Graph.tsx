@@ -5,8 +5,7 @@ import { motion, useReducedMotionConfig } from "motion/react";
 import { animateTo, resolveTiming } from "./waapi";
 import { useElementSize } from "@/lib/useElementSize";
 import type { LyricWord } from "@/lib/types";
-import { LABEL, visualLength, vivid, wordLook, type TemplateProps } from "./shared";
-import { Painted } from "./kinetic";
+import { LABEL, lyricShadow, visualLength, vivid, wordColor, type TemplateProps } from "./shared";
 
 /**
  * A lyric tree. Meaningful words ("HEART", "BELONGS", "YOU") form the trunk, joined
@@ -261,22 +260,23 @@ export function Graph({ line, revealed, palette, seed }: TemplateProps) {
             const n = nodes[i];
             const shown = i < revealed;
             return (
-              <Painted
+              <span
                 key={i}
-                measure
-                look={wordLook(line, i, palette, seed)}
-                className="absolute! origin-bottom-left font-black leading-none tracking-tight whitespace-nowrap transition-[opacity,transform] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
+                data-fit=""
+                className="absolute origin-bottom-left font-black leading-none tracking-tight whitespace-nowrap transition-[opacity,transform] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
                 style={{
                   left: n.x + (n.leaf ? 8 : 10),
                   top: n.y + (n.leaf ? 4 : -10),
                   fontSize: n.font,
                   translate: n.leaf ? "0 0" : "0 -100%",
+                  color: wordColor(line, i, palette, seed),
+                  textShadow: lyricShadow(wordColor(line, i, palette, seed)),
                   opacity: shown ? 1 : 0,
                   transform: shown ? "translateY(0) scale(1)" : "translateY(6px) scale(0.85)",
                 }}
               >
                 {w.text}
-              </Painted>
+              </span>
             );
           })}
         </div>

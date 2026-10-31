@@ -136,3 +136,13 @@ export async function getPlaylistTracks(id: string): Promise<Track[]> {
     .map((i) => toTrack(i, i.item_type === "video" ? "video" : "song"))
     .filter((t): t is Track => t !== null);
 }
+
+/** YouTube Music's lyrics for a song (plain text, licensed from Musixmatch / LyricFind). */
+export async function getYouTubeLyrics(videoId: string): Promise<{ text: string; credit?: string } | null> {
+  const yt = await getClient();
+  const shelf = await yt.music.getLyrics(videoId);
+  const text = shelf?.description?.toString().trim();
+  if (!text) return null;
+  const credit = shelf?.footer?.toString().replace(/^Source:\s*/i, "").trim();
+  return { text, credit: credit ? `${credit} via YouTube Music` : "YouTube Music" };
+}

@@ -13,8 +13,9 @@ import { FitBox } from "@/templates/FitBox";
 import { langAttr, vivid } from "@/templates/shared";
 import { TitleCard } from "./TitleCard";
 
-/** How far the camera pushes in over a line (FitBox accounts for it). */
-const CAMERA_ZOOM = 1.03;
+/** No continuous camera zoom: scaling text over a whole line makes the browser draw it as a
+ * stretched bitmap (slightly soft). Words stay crisp vector text once they settle. */
+const CAMERA_ZOOM = 1;
 
 /** Show lyrics slightly early: reading takes a moment, and the player reports late. */
 const LEAD_SECONDS = 0.15;
@@ -28,12 +29,14 @@ type Props = {
   palette: Palette;
   seed: number;
   genre?: string;
+  /** source of plain (unsynced) lyrics, shown with the timing note */
+  lyricsCredit?: string;
   offset: number;
   template: TemplateChoice;
   getTime: () => number;
 };
 
-export function LyricsStage({ track, lines, status, palette, seed, genre, offset, template, getTime }: Props) {
+export function LyricsStage({ track, lines, status, palette, seed, genre, lyricsCredit, offset, template, getTime }: Props) {
   const [pos, setPos] = useState<Position>({ mode: "intro", line: -1, revealed: 0 });
   const posRef = useRef(pos);
 
@@ -104,7 +107,7 @@ export function LyricsStage({ track, lines, status, palette, seed, genre, offset
           : status === "none"
           ? "No lyrics found for this song"
           : status === "unsynced"
-            ? "Lyrics aren't time-synced for this song, so timing is approximate"
+            ? `Timing is estimated for this song${lyricsCredit ? ` · lyrics from ${lyricsCredit}` : ""}`
             : undefined;
 
   let content: React.ReactNode;
@@ -182,23 +185,17 @@ export function LineText({
   const Template = TEMPLATES[scene.template].component;
   const camRef = useRef<HTMLDivElement>(null);
   const reduce = useReducedMotionConfig() ?? false;
-  const lineSeconds = Math.max(2, line.end - line.start);
 
-  // camera on the compositor thread: settle into the tilt, then a slow dolly push-in
+  // camera on the compositor thread: the line settles into its tilt, then holds still
   useLayoutEffect(() => {
     const el = camRef.current;
     if (!el) return;
-    el.style.rotate = `${scene.tilt}deg`;
-    el.style.scale = String(CAMERA_ZOOM);
-    if (reduce) return;
+    el.style.rotate = scene.tilt ? `${scene.tilt}deg` : "";
+    if (reduce || !scene.tilt) return;
     const settle = springTiming(40, 13, 1);
     const tilt = el.animate([{ rotate: `${scene.tilt * 1.3}deg` }, { rotate: `${scene.tilt}deg` }], { duration: settle.duration, easing: settle.easing, fill: "backwards" });
-    const dolly = el.animate([{ scale: "0.97" }, { scale: String(CAMERA_ZOOM) }], { duration: lineSeconds * 1000, easing: "cubic-bezier(0.25, 0.1, 0.25, 1)", fill: "backwards" });
-    return () => {
-      tilt.cancel();
-      dolly.cancel();
-    };
-  }, [scene.tilt, lineSeconds, reduce]);
+    return () => tilt.cancel();
+  }, [scene.tilt, reduce]);
 
   return (
     <div ref={camRef} className="absolute inset-0 flex items-center justify-center">

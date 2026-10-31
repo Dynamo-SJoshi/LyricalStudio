@@ -2,12 +2,12 @@
 
 import { motion } from "motion/react";
 import { KineticWord } from "./kinetic";
-import { fitFont, SECONDARY, spring, wordLook, type TemplateProps } from "./shared";
+import { fitFont, SECONDARY, spring, wordColor, type TemplateProps } from "./shared";
 
 /** One huge word at a time, popping in center screen. The full line sits small underneath. */
 export function Burst({ line, revealed, palette, seed }: TemplateProps) {
   const active = Math.max(0, revealed - 1);
-  const fontSize = fitFont([line.words[active]?.text ?? ""], { maxVw: 22, heightVh: 40 });
+  const fontSize = fitFont([line.words[active]?.text ?? ""], { widthVw: 90, maxVw: 24, heightVh: 42 });
 
   return (
     <div className="relative flex h-full w-full flex-col items-center justify-center">
@@ -21,7 +21,7 @@ export function Burst({ line, revealed, palette, seed }: TemplateProps) {
             from={i < active ? { scale: 1.6, opacity: 0, scaleX: 1.15 } : { scale: 0.4, opacity: 0, scaleX: 1.5, scaleY: 0.7 }}
             transition={i < active ? { duration: 0.4, ease: [0.4, 0, 0.2, 1] } : spring}
             className="absolute font-black tracking-tighter whitespace-nowrap"
-            look={wordLook(line, i, palette, seed)}
+            style={{ color: wordColor(line, i, palette, seed) }}
           >
             {w.text}
           </KineticWord>

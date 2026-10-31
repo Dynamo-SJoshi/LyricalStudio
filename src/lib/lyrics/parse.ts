@@ -198,19 +198,39 @@ export function buildLines(input: RawLine[], songDuration?: number): LyricLine[]
   return lines;
 }
 
-/** Plain (unsynced) lyrics: spread evenly so there's still something to watch. */
+/**
+ * Plain (unsynced) lyrics: estimate timing. Each line gets time in proportion to how
+ * long it takes to sing (syllables / characters); stanza breaks become short pauses;
+ * a short intro and outro are left free. Approximate, but follows the song's flow.
+ */
 export function buildUnsyncedLines(plain: string, songDuration: number): LyricLine[] {
-  const texts = plain
-    .split(/\r?\n/)
-    .map((t) => t.replace(TIME_TAG, "").trim())
-    .filter(Boolean);
-  if (!texts.length) return [];
-  const startAt = Math.min(10, songDuration * 0.05);
-  const step = (songDuration - startAt) / texts.length;
-  return buildLines(
-    texts.map((text, i) => ({ start: startAt + i * step, text })),
-    songDuration,
-  );
+  const rows = plain.split(/\r?\n/).map((t) => t.replace(TIME_TAG, "").trim());
+  // weights: sung lines by syllables, a blank line (stanza break) as a pause
+  const items: { text: string; w: number }[] = [];
+  for (const text of rows) {
+    if (!text) {
+      if (items.length && items[items.length - 1].text) items.push({ text: "", w: 4 });
+      continue;
+    }
+    // section labels like "[Chorus]" aren't sung
+    if (/^\[[^\]]*\]$/.test(text)) continue;
+    const lang = detectLang(text);
+    const w = tokenize(text, lang).reduce((a, t) => a + weight(t, lang), 0) + 1.5;
+    items.push({ text, w });
+  }
+  while (items.length && !items[items.length - 1].text) items.pop();
+  if (!items.some((i) => i.text)) return [];
+  const intro = Math.min(12, songDuration * 0.07);
+  const outro = Math.min(10, songDuration * 0.05);
+  const span = Math.max(10, songDuration - intro - outro);
+  const total = items.reduce((a, i) => a + i.w, 0);
+  let t = intro;
+  const raw: { start: number; text: string }[] = [];
+  for (const i of items) {
+    raw.push({ start: t, text: i.text });
+    t += (i.w / total) * span;
+  }
+  return buildLines(raw, songDuration);
 }
 
 /** Index of the line active at time t (binary search). -1 before the first line. */

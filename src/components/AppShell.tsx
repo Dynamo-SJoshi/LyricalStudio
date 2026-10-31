@@ -49,6 +49,12 @@ function Studio() {
   const data = useTrackData(current, duration);
   const [template, setTemplateState] = useState<TemplateChoice>("auto");
   const [offset, setOffsetState] = useState(0);
+  // a new random value every time a song starts, so highlights (and layouts) vary per play
+  const [playNonce, setPlayNonce] = useState(0);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (current) setPlayNonce(Math.floor(Math.random() * 0xffffffff));
+  }, [current?.videoId]); // eslint-disable-line react-hooks/exhaustive-deps
   // "home" = suggestions, "lyrics" = the stage; a new song switches to lyrics
   const [view, setView] = useState<"home" | "lyrics">("home");
   const [videoBig, setVideoBig] = useState(false);
@@ -137,8 +143,9 @@ function Studio() {
             lines={data.lines}
             status={data.status}
             palette={data.palette}
-            seed={data.seed}
+            seed={(data.seed ^ playNonce) >>> 0}
             genre={data.genre}
+            lyricsCredit={data.lyricsCredit}
             offset={offset}
             template={template}
             getTime={getTime}

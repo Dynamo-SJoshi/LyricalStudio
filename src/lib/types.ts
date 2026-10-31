@@ -33,7 +33,9 @@ export type LyricLine = {
 };
 
 export type LyricsResult = {
-  source: "lrclib";
+  source: "lrclib" | "youtube" | "lyricsovh";
+  /** who provides the text, e.g. "Musixmatch" (shown with plain lyrics) */
+  credit?: string;
   synced: boolean;
   wordSynced: boolean;
   /** raw LRC (synced) or plain text */

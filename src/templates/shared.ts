@@ -89,7 +89,35 @@ export function wordColor(line: LyricLine, index: number, palette: Palette, rawS
   const seed = rawSeed >>> 0;
   const w = line.words[index];
   if (w.backing) return SECONDARY;
-  return highlightIndexes(line).has(index) ? vivid(palette.accents[seed % 3], 0.74) : LABEL;
+  return highlightSet(line, seed).has(index) ? vivid(palette.accents[(seed >>> 3) % 3]) : LABEL;
+}
+
+const TINY_WORDS = /^(a|an|the|to|of|in|on|at|by|for|and|or|but|so|is|am|are|be|i|i'm|me|my|we|it|oh|ooh|ah|yeah)$/i;
+const highlightCache = new Map<string, Set<number>>();
+
+/**
+ * Which words of a line are highlighted: chosen at random from the line's real words
+ * (not "the", "to", ...), 1 to 4 per line, about a fifth to a third of the words.
+ * The seed includes a per-play random value, so every play of a song highlights
+ * different words, while repeated lines within one play stay consistent.
+ */
+export function highlightSet(line: LyricLine, seed: number): Set<number> {
+  const key = `${seed}|${line.text}`;
+  const hit = highlightCache.get(key);
+  if (hit) return hit;
+  const r = rng(seed ^ 0x51ed27);
+  const usable = line.words.map((w, i) => ({ w, i })).filter(({ w }) => !w.backing);
+  let pool = usable.filter(({ w }) => !TINY_WORDS.test(w.text.replace(/[^\p{L}']/gu, "")));
+  if (!pool.length) pool = usable;
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(r() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  const count = Math.max(1, Math.min(4, pool.length, Math.round(line.words.length * (0.18 + r() * 0.17))));
+  const out = new Set(pool.slice(0, count).map(({ i }) => i));
+  if (highlightCache.size > 2000) highlightCache.clear();
+  highlightCache.set(key, out);
+  return out;
 }
 
 export const langAttr = (lang: LyricLine["lang"]) => (lang === "other" ? undefined : lang);
@@ -150,86 +178,4 @@ export function lyricShadow(color?: string): string {
   if (!color || color === LABEL || color === SECONDARY) return depth;
   const [r, g, b] = parseColor(color);
   return `${depth}, 0 0 0.6em rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, 0.5)`;
-}
-
-/* ---------------------------------------------------------------------------
- * Premium word looks. Every word is painted with a gradient (never flat white):
- *   - regular words: a soft pearl gradient, white flowing into a light album tint
- *   - highlights: a rich two-hue gradient in the album's colors, with a glow
- *   - backing vocals: soft grey
- * Gradients are built here in JS (inline styles), never with CSS color-mix.
- * ------------------------------------------------------------------------- */
-
-export type WordLook = {
-  /** background-image painted through the glyphs */
-  fill: string;
-  /** shadow/glow, drawn on a separate layer behind the fill */
-  shadow: string;
-  /** solid color for motion trails */
-  trail: string;
-  highlight: boolean;
-};
-
-/** Which words are highlighted: held/emphasized words, up to two per line. */
-export function highlightIndexes(line: LyricLine): Set<number> {
-  const out = new Set<number>();
-  line.words.forEach((w, i) => w.emphasis && !w.backing && out.add(i));
-  const candidates = line.words.map((w, i) => ({ w, i })).filter(({ w }) => !w.backing);
-  if (out.size === 0 && candidates.length >= 2) {
-    // the word held longest
-    let best = candidates[0];
-    for (const c of candidates) if (c.w.end - c.w.start > best.w.end - best.w.start) best = c;
-    out.add(best.i);
-  }
-  if (out.size < 2 && candidates.length >= 6) {
-    // plus the most substantial word on longer lines
-    let best = candidates[0];
-    for (const c of candidates) if (visualLength(c.w.text) > visualLength(best.w.text) && !out.has(c.i)) best = c;
-    if (!out.has(best.i)) out.add(best.i);
-  }
-  return out;
-}
-
-const rgbaOf = (color: string, a: number) => {
-  const [r, g, b] = parseColor(color);
-  return `rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, ${a})`;
-};
-
-export function wordLook(line: LyricLine, index: number, palette: Palette, rawSeed: number): WordLook {
-  const seed = rawSeed >>> 0;
-  const w = line.words[index];
-  const depth = "0 0.04em 0.24em rgba(0, 0, 0, 0.55)";
-  if (w.backing) {
-    return { fill: `linear-gradient(180deg, rgba(235,235,245,0.75), rgba(235,235,245,0.5))`, shadow: depth, trail: SECONDARY, highlight: false };
-  }
-  const a = palette.accents[seed % 3];
-  const b = palette.accents[(seed + 1) % 3];
-  if (highlightIndexes(line).has(index)) {
-    const top = vivid(a, 0.74);
-    const bottom = vivid(b, 0.62);
-    return {
-      fill: `linear-gradient(172deg, ${vivid(a, 0.86)} 0%, ${top} 38%, ${bottom} 100%)`,
-      shadow: `${depth}, 0 0 0.55em ${rgbaOf(top, 0.55)}, 0 0 1.4em ${rgbaOf(bottom, 0.3)}`,
-      trail: top,
-      highlight: true,
-    };
-  }
-  const tint = pastel(a, 0.86, 0.7);
-  return {
-    fill: `linear-gradient(176deg, #ffffff 0%, #ffffff 46%, ${tint} 100%)`,
-    shadow: depth,
-    trail: "#ffffff",
-    highlight: false,
-  };
-}
-
-/** Inline style that paints a word's gradient through its glyphs. */
-export function fillStyle(look: WordLook): React.CSSProperties {
-  return {
-    backgroundImage: look.fill,
-    WebkitBackgroundClip: "text",
-    backgroundClip: "text",
-    color: "transparent",
-    WebkitTextFillColor: "transparent",
-  };
 }

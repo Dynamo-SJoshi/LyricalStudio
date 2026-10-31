@@ -43,6 +43,7 @@ Inspired by the [Cotodama Lyric Speaker](https://cotodama-speaker.com/). Not aff
 | Song search | YouTube Music, through [youtubei.js](https://github.com/LuanRT/YouTube.js) |
 | Artwork and metadata | [iTunes Search API](https://performance-partners.apple.com/search-api) |
 | Synced lyrics | [LRCLIB](https://lrclib.net) |
+| Fallback lyrics (plain, timing estimated) | YouTube Music's licensed lyrics (Musixmatch / LyricFind), then [lyrics.ovh](https://lyricsovh.docs.apiary.io) |
 | Login and storage | [Supabase](https://supabase.com) |
 
 LyricalStudio does not download, host or redistribute any audio. All playback goes through YouTube's official embedded player.
