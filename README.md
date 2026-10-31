@@ -8,7 +8,9 @@ Inspired by the [Cotodama Lyric Speaker](https://cotodama-speaker.com/). Not aff
 
 - Search and play almost any song for free (YouTube Music catalog)
 - Lyrics synced to playback and animated word by word
-- Six motion styles (Stack, Burst, Zoom, Scatter, Flow, Vertical), picked per line from the song's genre, pace and chorus, or chosen by hand
+- Nine Cotodama-style text layouts (Stack, Slide, Burst, Zoom, Letters, Scatter, Graph, Flow, Vertical), picked per line from the song's genre, pace and chorus, or chosen by hand
+- Moving shapes around the words: network lines, outline shapes, stripes, color blocks, rings and particles that burst on every word, plus bars, diamonds and panels that invert the text they cross
+- Tilted lines, a slow camera push-in, and the previous line's last words lingering in color
 - Colors and a moving background taken from each song's album art, glass controls, spring motion
 - English, Japanese (日本語) and Hindi (हिन्दी); romanized lines appear as subtitles
 - Per-song sync nudge if lyrics run early or late

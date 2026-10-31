@@ -82,6 +82,13 @@ export function wordColor(line: LyricLine, index: number, palette: Palette, seed
   const w = line.words[index];
   if (w.backing) return SECONDARY;
   const accent = palette.accents[seed % 3];
+  const mode = (seed >>> 4) % 5;
+  // whole line in an album color, the held word in white
+  if (mode === 1) return w.emphasis ? LABEL : accent;
+  // words alternate between white and an accent
+  if (mode === 2) return w.emphasis || index % 2 === 1 ? palette.accents[(seed + 1) % 3] : LABEL;
+  // two accents, row-like rhythm
+  if (mode === 3) return index % 3 === 2 ? LABEL : palette.accents[(seed + (index % 2)) % 3];
   if (w.emphasis) return accent;
   // if nothing is emphasized, color the longest-held word of longer lines
   if (!line.words.some((x) => x.emphasis) && line.words.length >= 4) {

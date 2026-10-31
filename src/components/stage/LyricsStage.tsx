@@ -7,8 +7,9 @@ import type { Palette } from "@/lib/theme/palette";
 import { hashString } from "@/lib/theme/palette";
 import { detectLang, lineAt } from "@/lib/lyrics/parse";
 import type { LyricsStatus } from "@/lib/lyrics/useTrackData";
-import { chooseTemplate, TEMPLATES, type TemplateChoice } from "@/templates";
-import { langAttr } from "@/templates/shared";
+import { chooseScene, TEMPLATES, type TemplateChoice } from "@/templates";
+import { OverLayer, UnderLayer } from "@/templates/decor";
+import { langAttr, rng } from "@/templates/shared";
 import { TitleCard } from "./TitleCard";
 
 /** Show lyrics slightly early: reading takes a moment, and the player reports late. */
@@ -77,20 +78,41 @@ export function LyricsStage({ track, lines, status, palette, seed, genre, offset
     key = noLyrics ? `title-${status}` : pos.mode;
     content = <TitleCard track={track} palette={palette} caption={noLyrics ? caption : undefined} small={pos.mode === "outro"} />;
   } else if (pos.mode === "gap") {
+    const prev = lines[pos.line];
     key = `gap-${pos.line}`;
-    content = <Interlude color={palette.accents[pos.line % 3]} />;
+    content = (
+      <>
+        <UnderLayer kinds={["network", "outlines"]} line={prev} revealed={prev.words.length} palette={palette} seed={seed ^ pos.line} />
+        <Interlude color={palette.accents[pos.line % 3]} />
+      </>
+    );
   } else {
     const line = lines[pos.line];
-    const id = template === "auto" ? chooseTemplate(line, seed, genre) : template;
-    const Template = TEMPLATES[id].component;
+    const lineSeed = seed ^ hashString(line.text);
+    const scene = chooseScene(line, seed, genre, template === "auto" ? undefined : template);
+    const Template = TEMPLATES[scene.template].component;
+    const decor = { line, revealed: pos.revealed, palette, seed: lineSeed };
     key = `line-${pos.line}`;
     content = (
-      <div lang={langAttr(line.lang)} className="flex h-full w-full flex-col items-center justify-center">
-        <Template line={line} revealed={pos.revealed} palette={palette} seed={seed ^ hashString(line.text)} />
+      <div lang={langAttr(line.lang)} className="absolute inset-0 flex items-center justify-center uppercase">
+        <UnderLayer kinds={scene.under} {...decor} />
+        {/* camera: settle into the tilt, then a slow push-in for the life of the line */}
+        <motion.div
+          className="absolute inset-0 flex items-center justify-center"
+          initial={{ rotate: scene.tilt * 1.8, scale: 0.94 }}
+          animate={{ rotate: scene.tilt, scale: 1.05 }}
+          transition={{
+            rotate: { type: "spring", stiffness: 90, damping: 16 },
+            scale: { duration: Math.max(1.5, line.end - line.start), ease: "linear" },
+          }}
+        >
+          <Template line={line} revealed={pos.revealed} palette={palette} seed={lineSeed} />
+        </motion.div>
+        <OverLayer kind={scene.over} {...decor} />
         {line.sub && (
           <motion.p
             lang={langAttr(detectLang(line.sub))}
-            className="absolute bottom-[2cqh] max-w-[80cqw] text-center text-[clamp(15px,1.5cqw,22px)] font-medium text-secondary"
+            className="absolute bottom-[2cqh] max-w-[80cqw] text-center text-[clamp(15px,1.5cqw,22px)] font-medium normal-case text-secondary"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
@@ -102,8 +124,14 @@ export function LyricsStage({ track, lines, status, palette, seed, genre, offset
     );
   }
 
+  // the end of the previous line lingers in color as the new one arrives
+  const echoLine = pos.mode === "line" && pos.line > 0 ? lines[pos.line - 1] : null;
+
   return (
-    <div className="relative h-full w-full" aria-live="off">
+    <div className="relative h-full w-full overflow-hidden" aria-live="off">
+      <AnimatePresence>
+        {echoLine && <Echo key={`echo-${pos.line}`} line={echoLine} color={palette.accents[(pos.line + 1) % 3]} seed={seed ^ pos.line} />}
+      </AnimatePresence>
       <AnimatePresence initial={false}>
         <motion.div
           key={key}
@@ -119,6 +147,31 @@ export function LyricsStage({ track, lines, status, palette, seed, genre, offset
         <p className="absolute top-2 left-1/2 -translate-x-1/2 text-sm text-secondary">{caption}</p>
       )}
     </div>
+  );
+}
+
+function Echo({ line, color, seed }: { line: LyricLine; color: string; seed: number }) {
+  const r = rng(seed);
+  const words = line.words.slice(-2).map((w) => w.text).join(" ");
+  const left = r() < 0.5;
+  return (
+    <motion.p
+      aria-hidden
+      lang={langAttr(line.lang)}
+      className="pointer-events-none absolute font-black whitespace-nowrap uppercase"
+      style={{
+        color,
+        fontSize: "min(9cqw, 16cqh)",
+        [left ? "left" : "right"]: "4cqw",
+        top: `${(r() < 0.5 ? 8 : 70) + r() * 10}cqh`,
+      }}
+      initial={{ opacity: 0.75, x: 0, filter: "blur(0px)" }}
+      animate={{ opacity: 0, x: `${left ? -6 : 6}cqw`, filter: "blur(6px)" }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 2.2, ease: "easeOut" }}
+    >
+      {words}
+    </motion.p>
   );
 }
 
