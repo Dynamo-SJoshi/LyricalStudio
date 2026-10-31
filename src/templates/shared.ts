@@ -14,8 +14,8 @@ export const LABEL = "#f5f5f7";
 export const SECONDARY = "rgba(235, 235, 245, 0.55)";
 
 /** Apple-like spring: quick, no wobble. */
-export const spring = { type: "spring", stiffness: 380, damping: 32, mass: 0.9 } as const;
-export const softSpring = { type: "spring", stiffness: 180, damping: 26 } as const;
+export const spring = { type: "spring", stiffness: 150, damping: 24.5, mass: 1 } as const;
+export const softSpring = { type: "spring", stiffness: 80, damping: 18, mass: 1 } as const;
 
 /** Small deterministic PRNG so layouts are random-looking but stable. */
 export function rng(seed: number) {
@@ -32,13 +32,16 @@ export function rng(seed: number) {
 /** Approximate rendered width of a string in "em" for bold type. */
 export function visualLength(s: string) {
   let n = 0;
-  for (const ch of s) {
+  // lyrics render in uppercase bold, so estimate capital widths
+  for (const ch of s.toUpperCase()) {
     if (/[　-ヿ一-鿿가-힯＀-￯]/.test(ch)) n += 1;
-    else if (/[ऀ-ॿ]/.test(ch)) n += 0.6;
-    else if (/[MWmw@]/.test(ch)) n += 0.85;
-    else if (/[ilIj.,'!|:;]/.test(ch)) n += 0.3;
-    else if (ch === " ") n += 0.28;
-    else n += 0.6;
+    else if (/[ऀ-ॿ]/.test(ch)) n += 0.62;
+    else if (/[MW@]/.test(ch)) n += 0.98;
+    else if (/[I.,'!|:;]/.test(ch)) n += 0.3;
+    else if (ch === "J") n += 0.56;
+    else if (ch === " ") n += 0.26;
+    else if (/[0-9]/.test(ch)) n += 0.66;
+    else n += 0.72;
   }
   return Math.max(n, 0.5);
 }
@@ -103,3 +106,45 @@ export function wordColor(line: LyricLine, index: number, palette: Palette, rawS
 }
 
 export const langAttr = (lang: LyricLine["lang"]) => (lang === "other" ? undefined : lang);
+
+/* ---------------------------------------------------------------------------
+ * Liquid Glass glyphs. The gradient is computed here (not with CSS color-mix,
+ * which the CSS build step "lowers" into opaque fallbacks) and handed to the
+ * .glass-glyph class through CSS variables.
+ * ------------------------------------------------------------------------- */
+
+type RGBA = [number, number, number, number];
+
+function hslToRgb(h: number, s: number, l: number): [number, number, number] {
+  const k = (n: number) => (n + h / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const f = (n: number) => l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1));
+  return [f(0) * 255, f(8) * 255, f(4) * 255];
+}
+
+/** Parses #rgb, #rrggbb, rgb(a)() and hsl(a)() (comma or space separated). */
+export function parseColor(c: string): RGBA {
+  const hex = c.trim().match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (hex) {
+    const h = hex[1].length === 3 ? [...hex[1]].map((x) => x + x).join("") : hex[1];
+    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16), 1];
+  }
+  const nums = (c.match(/-?[\d.]+/g) ?? []).map(Number);
+  if (/^hsla?/i.test(c.trim())) {
+    const [r, g, b] = hslToRgb(nums[0] ?? 0, (nums[1] ?? 0) / 100, (nums[2] ?? 100) / 100);
+    return [r, g, b, nums[3] ?? 1];
+  }
+  if (/^rgba?/i.test(c.trim())) return [nums[0] ?? 255, nums[1] ?? 255, nums[2] ?? 255, nums[3] ?? 1];
+  return [245, 245, 247, 1];
+}
+
+const rgba = ([r, g, b]: number[], a: number) => `rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, ${a.toFixed(3)})`;
+const towardWhite = ([r, g, b]: number[], t: number) => [r + (255 - r) * t, g + (255 - g) * t, b + (255 - b) * t];
+
+/** CSS variables that turn a word into tinted Liquid Glass (used by .glass-glyph). */
+export function glassVars(color: string | undefined): React.CSSProperties {
+  const [r, g, b, a] = parseColor(color ?? LABEL);
+  const c = [r, g, b];
+  const fill = `linear-gradient(176deg, ${rgba(towardWhite(c, 0.78), a)} 0%, ${rgba(c, 0.96 * a)} 34%, ${rgba(c, 0.64 * a)} 58%, ${rgba(c, 0.78 * a)} 82%, ${rgba(towardWhite(c, 0.55), a)} 100%)`;
+  return { ["--glass-fill" as string]: fill };
+}

@@ -17,8 +17,9 @@ export function Burst({ line, revealed, palette, seed }: TemplateProps) {
           <KineticWord
             key={i}
             shown={revealed > 0 && i === active}
-            from={i < active ? { scale: 1.7, opacity: 0 } : { scale: 0.35, opacity: 0 }}
-            transition={i < active ? { duration: 0.28, ease: [0.4, 0, 1, 1] } : spring}
+            measure={i === active}
+            from={i < active ? { scale: 1.6, opacity: 0, scaleX: 1.15 } : { scale: 0.4, opacity: 0, scaleX: 1.5, scaleY: 0.7 }}
+            transition={i < active ? { duration: 0.4, ease: [0.4, 0, 0.2, 1] } : spring}
             className="absolute font-black tracking-tighter whitespace-nowrap"
             style={{ color: wordColor(line, i, palette, seed) }}
           >

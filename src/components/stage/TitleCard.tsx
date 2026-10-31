@@ -3,7 +3,7 @@
 import { motion } from "motion/react";
 import type { Track } from "@/lib/types";
 import type { Palette } from "@/lib/theme/palette";
-import { fitFont } from "@/templates/shared";
+import { fitFont, glassVars } from "@/templates/shared";
 
 /** Song title card: shown before the first lyric, at the end, and when there are no lyrics. */
 export function TitleCard({
@@ -26,8 +26,9 @@ export function TitleCard({
   return (
     <div className="flex max-w-[84cqw] flex-col items-center text-center">
       <motion.h2
-        className="font-black leading-[1.02] tracking-tighter"
-        style={{ fontSize, color: palette.accents[0] }}
+        data-fit=""
+        className="glass-glyph font-black leading-[1.02] tracking-tighter"
+        style={{ fontSize, color: palette.accents[0], ...glassVars(palette.accents[0]) }}
         initial={{ y: 40, opacity: 0, filter: "blur(16px)" }}
         animate={{ y: 0, opacity: 1, filter: "blur(0px)" }}
         transition={{ type: "spring", stiffness: 140, damping: 22 }}
@@ -35,6 +36,7 @@ export function TitleCard({
         {track.title}
       </motion.h2>
       <motion.p
+        data-fit=""
         className="mt-[2cqh] text-[clamp(18px,2.2cqw,36px)] font-semibold text-foreground/80"
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}

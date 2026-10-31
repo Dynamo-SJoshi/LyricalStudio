@@ -7,10 +7,14 @@ import type { Palette } from "@/lib/theme/palette";
 import { hashString } from "@/lib/theme/palette";
 import { detectLang, lineAt } from "@/lib/lyrics/parse";
 import type { LyricsStatus } from "@/lib/lyrics/useTrackData";
-import { chooseScene, TEMPLATES, type TemplateChoice } from "@/templates";
-import { OverLayer, UnderLayer } from "@/templates/decor";
-import { langAttr, rng } from "@/templates/shared";
+import { chooseScene, TEMPLATES, type Scene, type TemplateChoice } from "@/templates";
+import { FitBox } from "@/templates/FitBox";
+import { GlassInterlude, SceneFx } from "@/templates/decor";
+import { fitFont, glassVars, langAttr, rng } from "@/templates/shared";
 import { TitleCard } from "./TitleCard";
+
+/** How far the camera pushes in over a line (FitBox accounts for it). */
+const CAMERA_ZOOM = 1.03;
 
 /** Show lyrics slightly early: reading takes a moment, and the player reports late. */
 const LEAD_SECONDS = 0.15;
@@ -51,6 +55,9 @@ export function LyricsStage({ track, lines, status, palette, seed, genre, offset
       }
       const p = posRef.current;
       if (p.mode !== next.mode || p.line !== next.line || p.revealed !== next.revealed) {
+        if (next.mode === "line" && (next.line !== p.line || next.revealed > p.revealed)) {
+          window.dispatchEvent(new CustomEvent("ls:word", { detail: { index: next.revealed } }));
+        }
         posRef.current = next;
         setPos(next);
       }
@@ -76,39 +83,24 @@ export function LyricsStage({ track, lines, status, palette, seed, genre, offset
   let key: string;
   if (noLyrics || pos.mode === "intro" || pos.mode === "outro") {
     key = noLyrics ? `title-${status}` : pos.mode;
-    content = <TitleCard track={track} palette={palette} caption={noLyrics ? caption : undefined} small={pos.mode === "outro"} />;
-  } else if (pos.mode === "gap") {
-    const prev = lines[pos.line];
-    key = `gap-${pos.line}`;
     content = (
-      <>
-        <UnderLayer kinds={["network", "outlines"]} line={prev} revealed={prev.words.length} palette={palette} seed={(seed ^ pos.line) >>> 0} />
-        <Interlude color={palette.accents[pos.line % 3]} />
-      </>
+      <FitBox>
+        <TitleCard track={track} palette={palette} caption={noLyrics ? caption : undefined} small={pos.mode === "outro"} />
+      </FitBox>
     );
+  } else if (pos.mode === "gap") {
+    key = `gap-${pos.line}`;
+    content = <GlassInterlude palette={palette} seed={(seed ^ pos.line) >>> 0} />;
   } else {
     const line = lines[pos.line];
     const lineSeed = (seed ^ hashString(line.text)) >>> 0;
     const scene = chooseScene(line, seed, genre, template === "auto" ? undefined : template);
-    const Template = TEMPLATES[scene.template].component;
     const decor = { line, revealed: pos.revealed, palette, seed: lineSeed };
     key = `line-${pos.line}`;
     content = (
-      <div lang={langAttr(line.lang)} className="absolute inset-0 flex items-center justify-center uppercase">
-        <UnderLayer kinds={scene.under} {...decor} />
-        {/* camera: settle into the tilt, then a slow push-in for the life of the line */}
-        <motion.div
-          className="absolute inset-0 flex items-center justify-center"
-          initial={{ rotate: scene.tilt * 1.8, scale: 0.94 }}
-          animate={{ rotate: scene.tilt, scale: 1.05 }}
-          transition={{
-            rotate: { type: "spring", stiffness: 90, damping: 16 },
-            scale: { duration: Math.max(1.5, line.end - line.start), ease: "linear" },
-          }}
-        >
-          <Template line={line} revealed={pos.revealed} palette={palette} seed={lineSeed} />
-        </motion.div>
-        <OverLayer kind={scene.over} {...decor} />
+      <div lang={langAttr(line.lang)} className="lyric-pop absolute inset-0 flex items-center justify-center uppercase">
+        <SceneFx glass={scene.glass} droplets={scene.droplets} {...decor} />
+        <LineText line={line} scene={scene} revealed={pos.revealed} palette={palette} seed={lineSeed} />
         {line.sub && (
           <motion.p
             lang={langAttr(detectLang(line.sub))}
@@ -137,8 +129,8 @@ export function LyricsStage({ track, lines, status, palette, seed, genre, offset
           key={key}
           className="absolute inset-0 flex items-center justify-center"
           initial={{ opacity: 0 }}
-          animate={{ opacity: 1, transition: { duration: 0.18 } }}
-          exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.3, ease: [0.4, 0, 1, 1] } }}
+          animate={{ opacity: 1, transition: { duration: 0.35, ease: [0.25, 0.1, 0.25, 1] } }}
+          exit={{ opacity: 0, scale: 1.02, transition: { duration: 0.45, ease: [0.4, 0, 0.2, 1] } }}
         >
           {content}
         </motion.div>
@@ -150,41 +142,68 @@ export function LyricsStage({ track, lines, status, palette, seed, genre, offset
   );
 }
 
+/**
+ * One lyric line: camera (tilt + slow push-in) > FitBox (keeps it on screen) > layout.
+ * Shared by the stage and the fit test page so both render exactly the same thing.
+ */
+export function LineText({
+  line,
+  scene,
+  revealed,
+  palette,
+  seed,
+}: {
+  line: LyricLine;
+  scene: Scene;
+  revealed: number;
+  palette: Palette;
+  seed: number;
+}) {
+  const Template = TEMPLATES[scene.template].component;
+  return (
+    <motion.div
+      className="absolute inset-0 flex items-center justify-center"
+      style={{ willChange: "transform" }}
+      initial={{ rotate: scene.tilt * 1.3, scale: 0.97 }}
+      animate={{ rotate: scene.tilt, scale: CAMERA_ZOOM }}
+      transition={{
+        rotate: { type: "spring", stiffness: 40, damping: 13 },
+        // a slow, steady push-in, like a camera dolly
+        scale: { duration: Math.max(2, line.end - line.start), ease: [0.25, 0.1, 0.25, 1] },
+      }}
+    >
+      {/* the graph frames itself (it shrinks to fit, and pans only for very long lines) */}
+      <FitBox disabled={scene.template === "graph"} tilt={scene.tilt * 1.3} zoom={CAMERA_ZOOM} insets={line.sub ? { bottom: 0.16 } : undefined}>
+        <Template line={line} revealed={revealed} palette={palette} seed={seed} />
+      </FitBox>
+    </motion.div>
+  );
+}
+
 function Echo({ line, color, seed }: { line: LyricLine; color: string; seed: number }) {
   const r = rng(seed);
   const words = line.words.slice(-2).map((w) => w.text).join(" ");
   const left = r() < 0.5;
+  // sized to fit, and it drifts upward (not off the side) as it fades
+  const fontSize = fitFont([words], { widthVw: 52, maxVw: 9, heightVh: 16 });
   return (
     <motion.p
       aria-hidden
       lang={langAttr(line.lang)}
-      className="pointer-events-none absolute font-black whitespace-nowrap uppercase"
+      className="glass-glyph pointer-events-none absolute font-black whitespace-nowrap uppercase"
       style={{
         color,
-        fontSize: "min(9cqw, 16cqh)",
-        [left ? "left" : "right"]: "4cqw",
-        top: `${(r() < 0.5 ? 8 : 70) + r() * 10}cqh`,
+        ...glassVars(color),
+        fontSize,
+        [left ? "left" : "right"]: "5cqw",
+        top: `${(r() < 0.5 ? 10 : 68) + r() * 8}cqh`,
       }}
-      initial={{ opacity: 0.75, x: "0cqw" }}
-      animate={{ opacity: 0, x: `${left ? -6 : 6}cqw` }}
+      initial={{ opacity: 0.7, y: "0cqh" }}
+      animate={{ opacity: 0, y: "-4cqh" }}
       exit={{ opacity: 0 }}
       transition={{ duration: 2.2, ease: "easeOut" }}
     >
       {words}
     </motion.p>
-  );
-}
-
-function Interlude({ color }: { color: string }) {
-  return (
-    <div className="flex gap-4" aria-label="Instrumental">
-      {[0, 1, 2].map((i) => (
-        <span
-          key={i}
-          className="interlude-dot block size-5 rounded-full"
-          style={{ background: color, animationDelay: `${i * 0.22}s` }}
-        />
-      ))}
-    </div>
   );
 }

@@ -8,7 +8,7 @@ export function Scatter({ line, revealed, palette, seed }: TemplateProps) {
   const r = rng(seed);
   const total = line.words.reduce((a, w) => a + visualLength(w.text), 0);
   // aim for ~3 rows of text at the base size
-  const base = fitFontLen(total / 3 + 1, 3, { maxVw: 11, heightVh: 55 });
+  const base = fitFontLen(total / 3 + 1.5, 3, { widthVw: 66, maxVw: 10, heightVh: 50 });
   const layout = line.words.map((w) => ({
     scale: 0.65 + r() * 0.6,
     rotate: w.text.length <= 6 && r() < 0.22 ? -90 : 0,
@@ -29,14 +29,14 @@ export function Scatter({ line, revealed, palette, seed }: TemplateProps) {
           <KineticWord
             key={i}
             shown={shown}
-            from={{ x: l.fromX, y: l.fromY, opacity: 0, scale: 0.7 }}
+            from={{ x: l.fromX, y: l.fromY, opacity: 0, scale: 0.7, skewX: l.fromX * 6, rotate: l.fromY * 8 }}
             transition={spring}
             className="inline-block font-black leading-none tracking-tight"
             style={{
               fontSize: `${l.scale}em`,
               color: wordColor(line, i, palette, seed),
               writingMode: l.rotate ? "vertical-rl" : undefined,
-              translate: `0 ${l.offset}em`,
+              top: `${l.offset}em`, // layout offset (not a transform) so FitBox can measure it
             }}
           >
             {w.text}

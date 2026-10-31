@@ -8,16 +8,16 @@ export function Slide({ line, revealed, palette, seed }: TemplateProps) {
   const r = rng(seed + 5);
   const rows = groupRows(line.words, Math.min(3, Math.max(1, Math.ceil(line.words.length / 2))));
   // sized wider than the stage on purpose: rows overflow and get cropped
-  const fontSize = fitFont(rows.map((row) => row.map((w) => w.text).join(" ")), { widthVw: 118, maxVw: 20, heightVh: 80 });
-  const indentStep = 6 + r() * 8;
+  const fontSize = fitFont(rows.map((row) => row.map((w) => w.text).join(" ")), { widthVw: 78, maxVw: 15, heightVh: 66 });
+  const indentStep = 3 + r() * 4;
   const reverse = r() < 0.5;
   let k = 0;
 
   return (
-    <div className="flex w-full flex-col" style={{ fontSize }}>
+    <div className="flex w-[86cqw] flex-col" style={{ fontSize }}>
       {rows.map((row, ri) => {
         const fromLeft = (ri % 2 === 0) !== reverse;
-        const indent = (reverse ? rows.length - 1 - ri : ri) * indentStep - 6;
+        const indent = (reverse ? rows.length - 1 - ri : ri) * indentStep;
         return (
           <div key={ri} className="flex gap-x-[0.24em] leading-[1] whitespace-nowrap" style={{ marginLeft: `${indent}cqw` }}>
             {row.map((w) => {
@@ -27,8 +27,8 @@ export function Slide({ line, revealed, palette, seed }: TemplateProps) {
                 <KineticWord
                   key={i}
                   shown={shown}
-                  from={{ x: fromLeft ? -7 : 7, opacity: 0 }}
-                  transition={{ type: "spring", stiffness: 170, damping: 24 }}
+                  from={{ x: fromLeft ? -5 : 5, opacity: 0, scaleX: 1.45, scaleY: 0.82, skewX: fromLeft ? -16 : 16 }}
+                  transition={{ type: "spring", stiffness: 120, damping: 22 }}
                   className="inline-block font-black tracking-tight"
                   style={{ color: wordColor(line, i, palette, seed) }}
                 >

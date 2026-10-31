@@ -16,13 +16,13 @@ import { LikesProvider } from "@/lib/library/likes";
 import { readOffset, writeOffset } from "@/lib/library/recent";
 import { useTrackData } from "@/lib/lyrics/useTrackData";
 import { TEMPLATES, type TemplateChoice } from "@/templates";
-import { MotionBlurDefs } from "@/templates/kinetic";
+import { GooeyDefs } from "@/templates/kinetic";
 
 export function AppShell() {
   return (
     // honors the OS "reduce motion" setting for every animation
     <MotionConfig reducedMotion="user">
-      <MotionBlurDefs />
+      <GooeyDefs />
       <AuthProvider>
         <Gate />
       </AuthProvider>

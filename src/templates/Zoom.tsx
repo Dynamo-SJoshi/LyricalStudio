@@ -20,7 +20,7 @@ export function Zoom({ line, revealed, palette, seed }: TemplateProps) {
               <KineticWord
                 key={i}
                 shown={shown}
-                from={{ scale: 3, opacity: 0 }}
+                from={{ scale: 2.6, opacity: 0, scaleY: 0.75, skewX: -10 }}
                 transition={softSpring}
                 className="inline-block font-black tracking-tight"
                 style={{ color: wordColor(line, i, palette, seed) }}

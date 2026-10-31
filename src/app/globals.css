@@ -56,11 +56,119 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/*
+ * Apple-style glass. Everything behind it is already heavily blurred, so a tinted
+ * pane with specular edges reads as frosted glass. We skip backdrop-filter on
+ * purpose: re-blurring the moving background under every panel each frame was a
+ * major source of dropped frames.
+ */
 .glass {
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.11) 0%, rgba(255, 255, 255, 0.04) 40%, rgba(255, 255, 255, 0.02) 100%),
+    rgba(22, 22, 26, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.25),
+    0 18px 50px rgba(0, 0, 0, 0.35);
+}
+
+/*
+ * Glass lyrics (after Apple's Liquid Glass text, e.g. GlassText): each glyph is a
+ * translucent pane, bright along the top, see-through in the middle so the colored
+ * light behind shows. Tinted by the word's color (gradient computed in glassVars).
+ */
+.glass-glyph {
+  -webkit-text-fill-color: transparent;
+  background-image: var(
+    --glass-fill,
+    linear-gradient(176deg, #fff 0%, rgba(245, 245, 247, 0.96) 34%, rgba(245, 245, 247, 0.64) 58%, rgba(245, 245, 247, 0.78) 82%, #fff 100%)
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  /* no text-stroke: it exposes overlapping contours inside variable-font glyphs */
+}
+
+/* Lyrics lift off the background (drop-shadow follows the translucent glyphs) */
+.lyric-pop [data-fit] {
+  filter: drop-shadow(0 0.05em 0.09em rgba(0, 0, 0, 0.38)) drop-shadow(0 0.01em 0.015em rgba(0, 0, 0, 0.25));
+}
+
+/* ---------- Liquid Glass shapes ---------- */
+.liquid-glass {
+  --tint: #0a84ff;
+  overflow: hidden;
+  background: radial-gradient(130% 80% at 22% 0%, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0) 52%), rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  box-shadow:
+    inset 0 2px 0 -1px rgba(255, 255, 255, 0.6),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.14),
+    0 30px 70px rgba(0, 0, 0, 0.25);
+  will-change: transform;
+}
+.liquid-glass::before {
+  /* the song-colored tint, strongest at the edges like thick glass */
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(155deg, var(--tint) 0%, transparent 55%, var(--tint) 100%);
+  opacity: 0.4;
+  pointer-events: none;
+}
+.liquid-glass-sheen {
+  position: absolute;
+  top: -20%;
+  bottom: -20%;
+  left: 0;
+  width: 32%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  will-change: transform;
+}
+.glass-drop {
+  --tint: #64d2ff;
+  border-radius: 9999px;
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.95) 0 7%, rgba(255, 255, 255, 0.28) 32%, transparent 62%),
+    radial-gradient(circle, transparent 35%, var(--tint) 120%);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  will-change: transform, opacity;
+}
+.bloom {
+  --tint: #ff375f;
+  background: radial-gradient(circle, var(--tint) 0%, transparent 66%);
+  will-change: transform, opacity;
+}
+
+/* ---------- Liquid Glass background ---------- */
+.bg-glass-slab {
+  /* the glass itself: faint sheen, bright edges like a slab of glass */
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.015) 40%, rgba(255, 255, 255, 0.04) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 1px 0 0 rgba(255, 255, 255, 0.1),
+    inset -1px 0 0 rgba(255, 255, 255, 0.06),
+    inset 0 0 160px rgba(255, 255, 255, 0.05);
+}
+.bg-glass-sweep {
+  /* a soft band of reflected light gliding across the glass */
+  position: absolute;
+  top: -50%;
+  left: -60%;
+  width: 45%;
+  height: 200%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06) 40%, rgba(255, 255, 255, 0.11) 50%, rgba(255, 255, 255, 0.06) 60%, transparent);
+  animation: glass-sweep 16s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+  will-change: transform;
+}
+@keyframes glass-sweep {
+  0% { transform: translateX(0) rotate(18deg); }
+  55%, 100% { transform: translateX(380%) rotate(18deg); }
+}
+.glass-grain {
+  /* static frosted grain (rendered once, never animated) */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.06;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -85,6 +193,9 @@ body {
 .ambient-blob-0 { top: -30vmax; left: -20vmax; animation: drift-a 26s ease-in-out infinite alternate; }
 .ambient-blob-1 { bottom: -35vmax; right: -25vmax; animation: drift-b 32s ease-in-out infinite alternate; }
 .ambient-blob-2 { top: 10vmax; left: 30vw; width: 50vmax; height: 50vmax; animation: drift-c 22s ease-in-out infinite alternate; }
+
+.ambient-blob-3 { bottom: -20vmax; left: 10vw; width: 55vmax; height: 55vmax; animation: drift-d 28s ease-in-out infinite alternate; }
+@keyframes drift-d { to { transform: translate(30vw, -20vh) scale(1.2); } }
 
 @keyframes drift-a { to { transform: translate(18vw, 22vh) scale(1.15); } }
 @keyframes drift-b { to { transform: translate(-20vw, -18vh) scale(1.1); } }
@@ -123,8 +234,3 @@ body {
 .range::-moz-range-thumb { width: 12px; height: 12px; border: 0; border-radius: 9999px; background: var(--foreground); }
 
 select option { background: #1c1c1e; color: var(--foreground); }
-
-/* ---------- Decorations ---------- */
-/* stripes repeat every 4.8cqh * sqrt(2) horizontally, so moving by that loops seamlessly */
-.stripes-move { animation: stripes-drift 1.4s linear infinite; }
-@keyframes stripes-drift { from { transform: translateX(0); } to { transform: translateX(6.79cqh); } }

@@ -8,10 +8,10 @@ Inspired by the [Cotodama Lyric Speaker](https://cotodama-speaker.com/). Not aff
 
 - Search and play almost any song for free (YouTube Music catalog)
 - Lyrics synced to playback and animated word by word
-- Nine Cotodama-style text layouts (Stack, Slide, Burst, Zoom, Letters, Scatter, Graph, Flow, Vertical), picked per line from the song's genre, pace and chorus, or chosen by hand
-- Moving shapes around the words: network lines, outline shapes, stripes, color blocks, rings and particles that burst on every word, plus bars, diamonds and panels that invert the text they cross
-- Tilted lines, a slow camera push-in, the previous line's last words lingering in color, and directional motion blur on fast-moving words
-- Colors and a moving background taken from each song's album art, glass controls, spring motion
+- Ten Cotodama-style text layouts (Stack, Slide, Burst, Morph, Zoom, Letters, Scatter, Graph, Flow, Vertical), picked per line from the song's genre, pace and chorus, or chosen by hand
+- Apple Liquid Glass look: glass lyrics tinted with the album's colors, a glass background over moving album light that pulses with every word, and glass panes, lenses and droplets in the song's palette
+- Smooth, cinematic motion: gliding springs, a slow camera push-in, squash-and-stretch word morphs and ghost-trail motion blur
+- Lines always fit on screen, whatever the song, language or window size
 - English, Japanese (日本語) and Hindi (हिन्दी); romanized lines appear as subtitles
 - Per-song sync nudge if lyrics run early or late
 - Liked songs, recently played, and an up-next queue
@@ -63,7 +63,7 @@ Open http://localhost:3000. That's all you need: without Supabase keys the app r
 
 ## Contributing
 
-Pull requests are welcome. New lyric animation templates are the easiest place to start; see `CONTRIBUTING.md` (coming soon).
+Pull requests are welcome. New lyric animation templates are the easiest place to start (`src/templates/`). After changing a layout, open http://localhost:3000/dev/fit while `npm run dev` is running: it renders every line of ten songs in every layout and reports any word that would be cut off.
 
 ## License
 

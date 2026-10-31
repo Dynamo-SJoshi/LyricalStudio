@@ -22,7 +22,7 @@ export function Stack({ line, revealed, palette, seed }: TemplateProps) {
               <KineticWord
                 key={i}
                 shown={shown}
-                from={{ y: 1.1, opacity: 0 }}
+                from={{ y: 1.1, opacity: 0, scaleY: 1.4, scaleX: 0.88 }}
                 transition={spring}
                 className="inline-block font-black tracking-tight"
                 style={{ color: wordColor(line, i, palette, seed) }}

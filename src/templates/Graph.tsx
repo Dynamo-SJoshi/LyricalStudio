@@ -1,17 +1,17 @@
 "use client";
 
 import { useEffect } from "react";
-import { animate, motion, useMotionValue, useReducedMotion, useTransform, useVelocity } from "motion/react";
+import { animate, motion, useMotionValue, useReducedMotionConfig } from "motion/react";
 import { useElementSize } from "@/lib/useElementSize";
 import type { LyricWord } from "@/lib/types";
-import { blurFor } from "./kinetic";
-import { LABEL, visualLength, wordColor, type TemplateProps } from "./shared";
+import { glassVars, LABEL, visualLength, wordColor, type TemplateProps } from "./shared";
 
 /**
  * A lyric tree. Meaningful words ("HEART", "BELONGS", "YOU") form the trunk, joined
  * by smooth curves in reading order. Small words ("MY", "TO", "THE") are leaves that
  * hang off the word they belong to, so "MY" links to "HEART" and "TO" links to "YOU".
- * The camera glides along the trunk (with motion blur) to keep the newest word in view.
+ * Long lines wrap onto more rows and the tree scales to fit, so nothing is ever cut off;
+ * the camera drifts gently toward the newest word within the safe area.
  */
 
 const SMALL_WORDS = new Set([
@@ -33,17 +33,26 @@ function isLeaf(words: LyricWord[], i: number) {
 }
 
 type Node = { x: number; y: number; font: number; leaf: boolean; parent: number };
+type Box = { l: number; t: number; r: number; b: number };
 
-function layout(words: LyricWord[], W: number, H: number, seed: number) {
+/** Rendered width of a label in px (visualLength already estimates uppercase). */
+const labelWidth = (text: string, font: number) => visualLength(text) * font;
+
+/**
+ * Lay the tree out in rows no wider than `rowWidth`: the trunk flows left to right on a
+ * gentle wave and wraps down to the next row, like a branch. Leaves hang below their word.
+ */
+function layout(words: LyricWord[], W: number, H: number, seed: number, rowWidth: number) {
   const trunkFont = Math.min(H * 0.13, W * 0.075);
   const leafFont = trunkFont * 0.42;
   const gap = W * 0.05;
-  const amp = H * 0.13;
+  const amp = trunkFont * 0.75;
   const phase = (seed % 628) / 100;
-  const mid = H * 0.56;
+  // label above + wave + leaves below + the next row's label
+  const rowStep = amp * 2 + trunkFont * 0.75 + leafFont * 2.6 + trunkFont * 1.25 + 14;
 
   let leaves = words.map((_, i) => isLeaf(words, i));
-  if (leaves.every(Boolean) || !leaves.some((l) => !l)) leaves = words.map(() => false);
+  if (!leaves.some((l) => !l)) leaves = words.map(() => false);
 
   // each leaf belongs to the next trunk word (determiners/prepositions lead into it)
   const parentOf = words.map((_, i) => {
@@ -60,82 +69,133 @@ function layout(words: LyricWord[], W: number, H: number, seed: number) {
     leaf: leaves[i],
     parent: parentOf[i],
   }));
+  const leavesWidthOf = (i: number) =>
+    words.reduce((a, w, j) => (leaves[j] && parentOf[j] === i ? a + labelWidth(w.text, leafFont) + leafFont * 1.6 : a), 0);
 
-  // trunk: steady left-to-right steps on a gentle wave
   let x = 0;
+  let row = 0;
   let k = 0;
+  let inRow = 0;
   let prevTrunk = -1;
   for (let i = 0; i < words.length; i++) {
     if (leaves[i]) continue;
-    const myLeaves = words.filter((_, j) => leaves[j] && parentOf[j] === i);
-    const leavesWidth = myLeaves.reduce((a, w) => a + labelWidth(w.text, leafFont) + leafFont * 1.6, 0);
-    if (prevTrunk >= 0) {
-      // the previous label starts 10px right of its node
+    const lw = leavesWidthOf(i);
+    if (prevTrunk < 0) x = lw;
+    else {
       const prevWidth = labelWidth(words[prevTrunk].text, nodes[prevTrunk].font) + 10;
-      x += Math.max(prevWidth + gap, leavesWidth + gap);
+      const next = x + Math.max(prevWidth + gap, lw + gap);
+      if (inRow > 0 && next + labelWidth(words[i].text, nodes[i].font) + 10 > rowWidth) {
+        row++;
+        inRow = 0;
+        x = lw;
+      } else x = next;
     }
     nodes[i].x = x;
-    nodes[i].y = mid + amp * Math.sin(k * 1.25 + phase);
+    nodes[i].y = row * rowStep + amp * Math.sin(k * 1.25 + phase);
     prevTrunk = i;
     k++;
+    inRow++;
   }
 
-  // leaves: fanned out below-left of their parent, away from the parent's label
+  // leaves fan out below-left of their word, away from its label
   for (let i = 0; i < words.length; i++) {
     if (!leaves[i]) continue;
     const p = nodes[parentOf[i]];
     const siblings = words.map((_, j) => j).filter((j) => leaves[j] && parentOf[j] === parentOf[i]);
     const order = siblings.indexOf(i);
-    const below = p.y < H * 0.62;
     let dx = 0;
-    for (let s = siblings.length - 1; s >= order; s--) dx += labelWidth(words[siblings[s]].text, leafFont) + leafFont * 1.6;
+    for (let q = siblings.length - 1; q >= order; q--) dx += labelWidth(words[siblings[q]].text, leafFont) + leafFont * 1.6;
     nodes[i].x = p.x - dx;
-    nodes[i].y = p.y + (below ? 1 : -1) * (H * 0.16 + (order % 2) * H * 0.06);
+    nodes[i].y = p.y + trunkFont * 0.75 + (order % 2) * leafFont * 1.3;
   }
 
-  const last = nodes.reduce((a, n, i) => Math.max(a, n.x + 10 + labelWidth(words[i].text, n.font)), 0);
-  const first = Math.min(...nodes.map((n) => n.x));
-  return { nodes, first, last };
+  // bounding box of every label and dot
+  const box: Box = { l: Infinity, t: Infinity, r: -Infinity, b: -Infinity };
+  const add = (l: number, t: number, r: number, b: number) => {
+    box.l = Math.min(box.l, l);
+    box.t = Math.min(box.t, t);
+    box.r = Math.max(box.r, r);
+    box.b = Math.max(box.b, b);
+  };
+  nodes.forEach((n, i) => {
+    const w = labelWidth(words[i].text, n.font);
+    add(n.x - 8, n.y - 8, n.x + 8, n.y + 8);
+    if (n.leaf) add(n.x + 8, n.y + 4, n.x + 8 + w, n.y + 4 + n.font * 1.05);
+    else add(n.x + 10, n.y - 10 - n.font * 1.05, n.x + 10 + w, n.y - 10);
+  });
+  return { nodes, box, rows: row + 1 };
 }
 
-/** Rendered width of a label in px: bold uppercase runs ~15% wider than visualLength's estimate. */
-const labelWidth = (text: string, font: number) => visualLength(text.toUpperCase()) * font * 1.15;
-
 function trunkPath(a: Node, b: Node) {
+  if (b.y - a.y > Math.abs(b.x - a.x) * 0.2 && b.x < a.x) {
+    // wrapping to the next row: swing down and back like a branch
+    const midY = (a.y + b.y) / 2;
+    return `M ${a.x} ${a.y} C ${a.x + 120} ${midY}, ${b.x - 120} ${midY}, ${b.x} ${b.y}`;
+  }
   const dx = (b.x - a.x) / 2;
   return `M ${a.x} ${a.y} C ${a.x + dx} ${a.y}, ${b.x - dx} ${b.y}, ${b.x} ${b.y}`;
 }
 
+const SAFE_X = 0.05;
+const SAFE_Y = 0.08;
+
 export function Graph({ line, revealed, palette, seed }: TemplateProps) {
   const [ref, { width: W, height: H }] = useElementSize<HTMLDivElement>();
-  const reduce = useReducedMotion();
+  const reduce = useReducedMotionConfig();
   const ready = W > 0 && H > 0;
-  const { nodes, first, last } = ready ? layout(line.words, W, H, seed) : { nodes: [], first: 0, last: 0 };
+  const availW = W * (1 - 2 * SAFE_X);
+  const availH = H * (1 - 2 * SAFE_Y);
 
-  // camera: if the whole tree fits, center it; otherwise keep the newest word at ~40% width
-  const active = nodes[Math.max(0, revealed - 1)];
-  const span = last - first;
-  let camX = 0;
+  // try a single row and progressively more wrapping; keep whichever shows the biggest type
+  let best: (ReturnType<typeof layout> & { s: number }) | null = null;
   if (ready) {
-    if (span <= W * 0.86) camX = (W - span) / 2 - first;
-    else camX = Math.min(W * 0.06 - first, Math.max(W * 0.94 - last, W * 0.4 - (active?.x ?? 0)));
+    for (const f of [Infinity, 2.2, 1.7, 1.35, 1.05, 0.8]) {
+      const l = layout(line.words, W, H, seed, availW * f);
+      const s = Math.min(1, availW / (l.box.r - l.box.l), availH / (l.box.b - l.box.t));
+      if (!best || s > best.s + 0.02 || (Math.abs(s - best.s) <= 0.02 && l.rows < best.rows)) best = { ...l, s };
+    }
+  }
+  const nodes = best?.nodes ?? [];
+  const s = best?.s ?? 1;
+  const box = best?.box ?? { l: 0, t: 0, r: 0, b: 0 };
+
+  // camera: center the whole tree, then drift gently toward the newest word,
+  // but never so far that anything leaves the safe area
+  let camX = 0;
+  let camY = 0;
+  if (ready && best) {
+    const bw = (box.r - box.l) * s;
+    const bh = (box.b - box.t) * s;
+    camX = (W - bw) / 2 - box.l * s;
+    camY = (H - bh) / 2 - box.t * s;
+    const active = nodes[Math.max(0, revealed - 1)];
+    if (active) {
+      const slackX = Math.max(0, (availW - bw) / 2);
+      const slackY = Math.max(0, (availH - bh) / 2);
+      camX += Math.max(-slackX, Math.min(slackX, (W / 2 - (camX + active.x * s)) * 0.3));
+      camY += Math.max(-slackY, Math.min(slackY, (H / 2 - (camY + active.y * s)) * 0.3));
+    }
   }
 
   const x = useMotionValue(camX);
-  const vx = useVelocity(x);
-  const filter = useTransform(() => (reduce ? "none" : blurFor(vx.get(), 0)));
+  const y = useMotionValue(camY);
   useEffect(() => {
     if (!ready) return;
-    const c = animate(x, camX, reduce ? { duration: 0 } : { type: "spring", stiffness: 70, damping: 20, mass: 1 });
-    return () => c.stop();
-  }, [camX, ready, reduce, x]);
+    const t = reduce ? { duration: 0 } : ({ type: "spring", stiffness: 30, damping: 12, mass: 1 } as const);
+    const a = animate(x, camX, t);
+    const b = animate(y, camY, t);
+    return () => {
+      a.stop();
+      b.stop();
+    };
+  }, [camX, camY, ready, reduce, x, y]);
 
   const edge = palette.accents[(seed >>> 0) % 3];
 
   return (
     <div ref={ref} className="absolute inset-0 overflow-hidden">
       {ready && (
-        <motion.div className="absolute top-0 left-0" style={{ x, filter }}>
+        <motion.div className="absolute top-0 left-0" style={{ x, y, scale: s, originX: 0, originY: 0, willChange: "transform" }}>
           <svg className="absolute top-0 left-0 overflow-visible" width={1} height={1} aria-hidden>
             {nodes.map((n, i) => {
               const shown = i < revealed;
@@ -199,13 +259,15 @@ export function Graph({ line, revealed, palette, seed }: TemplateProps) {
             return (
               <motion.span
                 key={i}
-                className="absolute origin-bottom-left font-black leading-none tracking-tight whitespace-nowrap"
+                data-fit=""
+                className="glass-glyph absolute origin-bottom-left font-black leading-none tracking-tight whitespace-nowrap"
                 style={{
                   left: n.x + (n.leaf ? 8 : 10),
                   top: n.y + (n.leaf ? 4 : -10),
                   fontSize: n.font,
                   translate: n.leaf ? "0 0" : "0 -100%",
                   color: wordColor(line, i, palette, seed),
+                  ...glassVars(wordColor(line, i, palette, seed)),
                 }}
                 initial={{ opacity: 0.18, scale: 0.85, y: 6 }}
                 animate={shown ? { opacity: 1, scale: 1, y: 0 } : { opacity: 0.18, scale: 0.85, y: 6 }}

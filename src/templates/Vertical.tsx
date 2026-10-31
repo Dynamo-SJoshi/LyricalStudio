@@ -20,7 +20,7 @@ export function Vertical({ line, revealed, palette, seed }: TemplateProps) {
           <div key={i} className="overflow-hidden" style={{ marginTop: `${(i % 3) * 0.6}em` }}>
             <KineticWord
               shown={shown}
-              from={{ y: -1.1 * [...w.text].length, opacity: 0 }}
+              from={{ y: -1.1 * [...w.text].length, opacity: 0, scaleY: 1.4, scaleX: 0.85 }}
               transition={spring}
               className="block font-black leading-[1.05]"
               style={{ writingMode: "vertical-rl", color: wordColor(line, i, palette, seed) }}

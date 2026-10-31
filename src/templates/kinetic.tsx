@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
+import { glassVars } from "./shared";
 import {
   animate,
   motion,
   useMotionValue,
-  useReducedMotion,
+  useReducedMotionConfig,
   useTransform,
   useVelocity,
   type MotionValue,
@@ -13,43 +14,30 @@ import {
 } from "motion/react";
 
 /**
- * Motion blur, done cheaply: directional SVG blur filters at a few fixed strengths,
- * switched by how fast an element is moving. Elements at rest have no filter at all,
- * so the cost only exists during the brief moment something is in motion.
+ * Smooth, cinematic word motion.
+ *
+ * Motion blur is done with "ghost trails": two faint copies of the word that lag
+ * behind it in proportion to its speed. They only move with transforms and opacity,
+ * which the GPU composites for free, unlike blur filters that re-render text every frame.
+ *
+ * Morphing: words can enter stretched/skewed (scaleX, scaleY, skewX) and settle into
+ * their true shape, a squash-and-stretch morph.
  */
-const STRENGTHS = [1, 2, 4, 7, 11, 16];
 
-/** Mount once: the shared directional blur filters referenced by url(#mbx-N) / url(#mby-N). */
-export function MotionBlurDefs() {
+/** Critically damped: glides to rest with no bounce. */
+export const glide: Transition = { type: "spring", stiffness: 110, damping: 21, mass: 1 };
+
+/** Mount once: the threshold filter used by the gooey Morph layout. */
+export function GooeyDefs() {
   return (
     <svg aria-hidden width="0" height="0" style={{ position: "absolute" }}>
       <defs>
-        {STRENGTHS.map((n) => (
-          <g key={n}>
-            <filter id={`mbx-${n}`} x="-60%" y="-10%" width="220%" height="120%" colorInterpolationFilters="sRGB">
-              <feGaussianBlur stdDeviation={`${n} 0`} />
-            </filter>
-            <filter id={`mby-${n}`} x="-10%" y="-60%" width="120%" height="220%" colorInterpolationFilters="sRGB">
-              <feGaussianBlur stdDeviation={`0 ${n}`} />
-            </filter>
-          </g>
-        ))}
+        <filter id="gooey-threshold" colorInterpolationFilters="sRGB">
+          <feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 255 -140" />
+        </filter>
       </defs>
     </svg>
   );
-}
-
-function nearest(px: number) {
-  return STRENGTHS.reduce((a, b) => (Math.abs(b - px) < Math.abs(a - px) ? b : a));
-}
-
-/** Blur for an element moving at `vx`/`vy` px per second (one frame's travel, halved). */
-export function blurFor(vx: number, vy: number, zoom = 0): string {
-  const bx = Math.abs(vx) / 60 / 2;
-  const by = Math.abs(vy) / 60 / 2;
-  if (zoom > 0.8) return `blur(${Math.min(8, Math.round(zoom))}px)`;
-  if (bx < 0.9 && by < 0.9) return "none";
-  return bx >= by ? `url(#mbx-${nearest(bx)})` : `url(#mby-${nearest(by)})`;
 }
 
 export type Pose = {
@@ -58,11 +46,15 @@ export type Pose = {
   /** em */
   y?: number;
   scale?: number;
+  scaleX?: number;
+  scaleY?: number;
+  skewX?: number;
   opacity?: number;
   rotate?: number;
 };
 
-const REST: Required<Pose> = { x: 0, y: 0, scale: 1, opacity: 1, rotate: 0 };
+const REST: Required<Pose> = { x: 0, y: 0, scale: 1, scaleX: 1, scaleY: 1, skewX: 0, opacity: 1, rotate: 0 };
+const KEYS = Object.keys(REST) as (keyof Pose)[];
 
 type KineticProps = {
   shown: boolean;
@@ -73,58 +65,73 @@ type KineticProps = {
   transition?: Transition;
   className?: string;
   style?: React.CSSProperties;
+  /** include in FitBox measurement (Burst measures only the active word) */
+  measure?: boolean;
+  /** Liquid Glass glyphs (on by default) */
+  glass?: boolean;
   children: React.ReactNode;
 };
 
-/** A word that animates between a hidden and a shown pose, with velocity-based motion blur. */
-export function KineticWord({ shown, from, to, transition, className, style, children }: KineticProps) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const fontPx = useRef(48);
-  const reduce = useReducedMotion();
+function useGhost(vx: MotionValue<number>, vy: MotionValue<number>, vs: MotionValue<number>, lag: number, strength: number, off: boolean) {
+  const x = useTransform(vx, (v) => `${-v * lag}em`);
+  const y = useTransform(vy, (v) => `${-v * lag}em`);
+  const scale = useTransform(vs, (v) => 1 - v * lag * 0.8);
+  const opacity = useTransform(() => {
+    if (off) return 0;
+    const speed = Math.hypot(vx.get(), vy.get()) + Math.abs(vs.get()) * 4;
+    return Math.min(0.34, speed / 70) * strength;
+  });
+  return { x, y, scale, opacity };
+}
+
+/** A word that glides between a hidden and a shown pose, with ghost-trail motion blur. */
+export function KineticWord({ shown, from, to, transition, className, style, measure = true, glass = true, children }: KineticProps) {
+  const reduce = useReducedMotionConfig() ?? false;
   const hidden = { ...REST, ...from };
   const visible = { ...REST, ...to };
 
   const x = useMotionValue(hidden.x);
   const y = useMotionValue(hidden.y);
   const scale = useMotionValue(hidden.scale);
+  const scaleX = useMotionValue(hidden.scaleX);
+  const scaleY = useMotionValue(hidden.scaleY);
+  const skewX = useMotionValue(hidden.skewX);
   const opacity = useMotionValue(hidden.opacity);
   const rotate = useMotionValue(hidden.rotate);
-  const vx = useVelocity(x);
-  const vy = useVelocity(y);
-  const vs = useVelocity(scale);
-
-  useEffect(() => {
-    if (ref.current) fontPx.current = parseFloat(getComputedStyle(ref.current).fontSize) || 48;
-  }, []);
+  const values: Record<keyof Pose, MotionValue<number>> = { x, y, scale, scaleX, scaleY, skewX, opacity, rotate };
 
   useEffect(() => {
     const target = shown ? visible : hidden;
-    const t = reduce ? { duration: 0 } : (transition ?? { type: "spring", stiffness: 300, damping: 30 });
-    const pairs: [MotionValue<number>, number][] = [
-      [x, target.x],
-      [y, target.y],
-      [scale, target.scale],
-      [opacity, target.opacity],
-      [rotate, target.rotate],
-    ];
-    const controls = pairs.map(([mv, v]) => animate(mv, v, t));
+    const t = reduce ? { duration: 0 } : (transition ?? glide);
+    const controls = KEYS.map((k) => animate(values[k], target[k], t));
     return () => controls.forEach((c) => c.stop());
     // poses are derived from props each render; re-run only when visibility flips
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shown, reduce]);
 
+  const vx = useVelocity(x);
+  const vy = useVelocity(y);
+  const vs = useVelocity(scale);
+  const g1 = useGhost(vx, vy, vs, 0.022, 1, reduce);
+  const g2 = useGhost(vx, vy, vs, 0.045, 0.55, reduce);
+
   const tx = useTransform(x, (v) => `${v}em`);
   const ty = useTransform(y, (v) => `${v}em`);
-  const filter = useTransform(() => {
-    if (reduce) return "none";
-    const f = fontPx.current;
-    // velocities are in em/s and scale/s; convert to on-screen px/s
-    return blurFor(vx.get() * f, vy.get() * f, Math.abs(vs.get()) * f * 0.012);
-  });
+  const positioned = className?.includes("absolute") ? {} : { position: "relative" as const };
 
   return (
-    <motion.span ref={ref} className={className} style={{ ...style, x: tx, y: ty, scale, opacity, rotate, filter }}>
-      {children}
+    <motion.span
+      data-fit={measure ? "" : undefined}
+      className={className}
+      style={{ ...positioned, ...(glass ? glassVars(style?.color as string | undefined) : {}), ...style, x: tx, y: ty, scale, scaleX, scaleY, skewX, rotate, opacity, willChange: "transform, opacity" }}
+    >
+      <motion.span aria-hidden className={`${glass ? "glass-glyph " : ""}pointer-events-none absolute inset-0`} style={g2}>
+        {children}
+      </motion.span>
+      <motion.span aria-hidden className={`${glass ? "glass-glyph " : ""}pointer-events-none absolute inset-0`} style={g1}>
+        {children}
+      </motion.span>
+      <span className={glass ? "glass-glyph relative" : "relative"}>{children}</span>
     </motion.span>
   );
 }

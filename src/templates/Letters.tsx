@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import { fitFont, groupRows, rng, wordColor, type TemplateProps } from "./shared";
+import { fitFont, glassVars, groupRows, rng, wordColor, type TemplateProps } from "./shared";
 
 /** Each letter flips in on its own, staggered, like a split-flap board. */
 export function Letters({ line, revealed, palette, seed }: TemplateProps) {
@@ -20,18 +20,18 @@ export function Letters({ line, revealed, palette, seed }: TemplateProps) {
             const shown = i < revealed;
             const color = wordColor(line, i, palette, seed);
             return (
-              <span key={i} className="inline-flex font-black tracking-tight" style={{ color }}>
+              <span key={i} data-fit="" className="inline-flex font-black tracking-tight" style={{ color, ...glassVars(color) }}>
                 {[...w.text].map((ch, j) => (
                   <motion.span
                     key={j}
-                    className="inline-block origin-center"
+                    className="glass-glyph inline-block origin-center"
                     initial={{ rotateX: fromTop ? 90 : -90, y: fromTop ? "-0.4em" : "0.4em", opacity: 0 }}
                     animate={
                       shown
                         ? { rotateX: 0, y: "0em", opacity: 1 }
                         : { rotateX: fromTop ? 90 : -90, y: fromTop ? "-0.4em" : "0.4em", opacity: 0 }
                     }
-                    transition={{ type: "spring", stiffness: 300, damping: 20, delay: shown ? j * 0.035 : 0 }}
+                    transition={{ type: "spring", stiffness: 160, damping: 22, delay: shown ? j * 0.03 : 0 }}
                   >
                     {ch}
                   </motion.span>
