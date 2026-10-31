@@ -14,7 +14,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 Open-source (MIT) web music player whose main feature is Cotodama-style kinetic lyric typography, styled with Apple's design language (system colors, album-art gradients, glass materials, spring motion). Desktop-first.
 
 ## Decisions already made (don't revisit without the owner)
-- Playback: official YouTube IFrame Player API, player hidden, audio only. Never download, rip, proxy or host audio (no yt-dlp, no stream extraction).
+- Playback: official YouTube IFrame Player API. YouTube policy requires the player to stay visible and uncovered (min 200x200 px), so show it as a small video tile; never hide or overlay it. Never download, rip, proxy or host audio (no yt-dlp, no stream extraction).
 - Search: youtubei.js on the server (prefer "Artist - Topic" album uploads for lyric timing). Metadata/artwork: iTunes Search API. Lyrics: LRCLIB (credit it).
 - Auth + data: Supabase (login required; likes, playlists, per-song sync offsets).
 - Languages: English, Japanese, Hindi. Japanese needs word segmentation (Intl.Segmenter), Hindi uses Devanagari fonts.

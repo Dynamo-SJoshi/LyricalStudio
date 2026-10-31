@@ -17,7 +17,7 @@ Inspired by the [Cotodama Lyric Speaker](https://cotodama-speaker.com/). Not aff
 
 | Part | Source |
 | --- | --- |
-| Playback | The official [YouTube IFrame Player API](https://developers.google.com/youtube/iframe_api_reference) (hidden player, audio only) |
+| Playback | The official [YouTube IFrame Player API](https://developers.google.com/youtube/iframe_api_reference) (shown as a small video tile, as YouTube requires) |
 | Song search | YouTube Music, through [youtubei.js](https://github.com/LuanRT/YouTube.js) |
 | Artwork and metadata | [iTunes Search API](https://performance-partners.apple.com/search-api) |
 | Synced lyrics | [LRCLIB](https://lrclib.net) |
