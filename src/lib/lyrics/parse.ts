@@ -148,10 +148,26 @@ export function buildLines(input: RawLine[], songDuration?: number): LyricLine[]
 
     let words: LyricWord[];
     if (r.wordStarts?.length) {
-      words = r.wordStarts.map((w, idx) => ({
+      let timed = r.wordStarts;
+      // Some providers time Japanese per character: regroup into natural phrases,
+      // each starting at its first character's real timestamp.
+      if (lang === "ja") {
+        const chunks = tokenize(r.text, lang);
+        if (timed.length > chunks.length) {
+          const charStarts: number[] = [];
+          for (const w of timed) for (const ch of w.text) if (!/\s/.test(ch)) charStarts.push(w.start);
+          let cursor = 0;
+          timed = chunks.map((text) => {
+            const start = charStarts[Math.min(cursor, charStarts.length - 1)] ?? r.start;
+            cursor += [...text].filter((ch) => !/\s/.test(ch)).length;
+            return { start, text };
+          });
+        }
+      }
+      words = timed.map((w, idx) => ({
         text: w.text,
         start: w.start,
-        end: r.wordStarts![idx + 1]?.start ?? Math.min(next, w.start + 1.2),
+        end: timed[idx + 1]?.start ?? Math.min(next, w.start + 1.2),
       }));
     } else {
       const tokens = tokenize(r.text, lang);

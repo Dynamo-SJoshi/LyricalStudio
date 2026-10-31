@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePlayer } from "./PlayerProvider";
 import { useLikes } from "@/lib/library/likes";
 import { formatTime } from "@/lib/format";
@@ -18,12 +18,61 @@ export function ControlBar({ offset, onOffset, template, onTemplate }: Props) {
   const { current, status, duration, volume, toggle, next, prev, seek, setVolume, getTime, queue, index } = usePlayer();
   const { isLiked, toggleLike } = useLikes();
   const [time, setTime] = useState(0);
+  // a drag on the progress bar in progress (null = showing the real position)
   const [scrub, setScrub] = useState<number | null>(null);
+  const scrubRef = useRef<number | null>(null);
 
   useEffect(() => {
     const id = setInterval(() => setTime(getTime()), 250);
     return () => clearInterval(id);
   }, [getTime]);
+
+  const pointerDown = useRef(false);
+  const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const commitScrub = useCallback(() => {
+    if (idleTimer.current) clearTimeout(idleTimer.current);
+    const v = scrubRef.current;
+    if (v === null) return;
+    scrubRef.current = null;
+    setScrub(null);
+    seek(v);
+  }, [seek]);
+
+  const startScrub = (v: number) => {
+    scrubRef.current = v;
+    setScrub(v);
+    // safety net: a scrub with no button held (keyboard, stray events) finishes by itself
+    if (idleTimer.current) clearTimeout(idleTimer.current);
+    idleTimer.current = setTimeout(() => !pointerDown.current && commitScrub(), 1500);
+  };
+
+  // Finish a drag wherever the button is released. Deferred one tick: the slider sends a
+  // last change event after the release, which used to start a phantom scrub that froze
+  // the bar at the old position (even across songs).
+  useEffect(() => {
+    const up = () => {
+      if (!pointerDown.current) return;
+      pointerDown.current = false;
+      setTimeout(commitScrub, 0);
+    };
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+    window.addEventListener("blur", up);
+    return () => {
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      window.removeEventListener("blur", up);
+    };
+  }, [commitScrub]);
+
+  // a new song starts at 0: drop any unfinished drag and the old position
+  useEffect(() => {
+    scrubRef.current = null;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setScrub(null);
+    setTime(0);
+  }, [current?.videoId]);
 
   if (!current) return null;
   const playing = status === "playing" || status === "buffering";
@@ -80,15 +129,9 @@ export function ControlBar({ offset, onOffset, template, onTemplate }: Props) {
           max={total || 1}
           step={0.1}
           value={Math.min(shown, total || 1)}
-          onChange={(e) => setScrub(Number(e.target.value))}
-          onPointerUp={() => {
-            if (scrub !== null) seek(scrub);
-            setScrub(null);
-          }}
-          onKeyUp={() => {
-            if (scrub !== null) seek(scrub);
-            setScrub(null);
-          }}
+          onPointerDown={() => (pointerDown.current = true)}
+          onChange={(e) => startScrub(Number(e.target.value))}
+          onKeyUp={commitScrub}
           aria-label="Seek"
           className="range w-full min-w-0 flex-1"
           style={{ "--fill": `${total ? (shown / total) * 100 : 0}%` } as React.CSSProperties}
