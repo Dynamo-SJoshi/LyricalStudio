@@ -23,10 +23,18 @@ Open-source (MIT) web music player whose main feature is Cotodama-style kinetic 
 - No secrets in the repo: keys live in .env.local; document every key in .env.example.
 
 ## Layout
-- src/app — routes (Next.js 16 App Router)
-- src/lib — non-UI logic (search, lyrics, sync clock)
-- src/components — UI
-- src/templates — lyric animation templates, one per file
+- src/app/api — search (youtubei.js), lyrics (LRCLIB), meta (iTunes genre/artwork), image (artwork proxy for color extraction)
+- src/lib/lyrics — LRC parsing, word timing estimates (per-song pace), useTrackData hook
+- src/lib/clock — PlaybackClock smooths the IFrame player's coarse time reports
+- src/lib/youtube, src/lib/theme, src/lib/library, src/lib/supabase
+- src/components — AppShell (providers + login gate + layout), player, stage, search, auth
+- src/templates — lyric animation templates, one per file; chooseTemplate() in index.ts picks per line
+- supabase/schema.sql — likes table with row level security
+
+## Conventions
+- Lyric stage uses CSS container units (cqw/cqh), not vw/vh, so lyrics never run under the YouTube tile.
+- Auth is client-side only (Supabase browser client). Without keys the app runs in guest mode.
+- Load external artwork with referrerPolicy="no-referrer" (googleusercontent blocks some referrers).
 
 ## Workflow
 - One tool per feature branch; open a PR into main.

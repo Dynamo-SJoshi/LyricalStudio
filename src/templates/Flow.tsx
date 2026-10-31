@@ -1,0 +1,42 @@
+"use client";
+
+import { motion } from "motion/react";
+import { fitFontLen, LABEL, visualLength, wordColor, type TemplateProps } from "./shared";
+
+/** The whole line is visible but dim; words light up as they're sung. For fast or long lines. */
+export function Flow({ line, revealed, palette, seed }: TemplateProps) {
+  const total = visualLength(line.text);
+  const rows = Math.min(4, Math.max(1, Math.ceil(total / 14)));
+  const fontSize = fitFontLen(total / rows + 1, rows, { maxVw: 9, heightVh: 22 * rows });
+
+  return (
+    <motion.p
+      className={`flex w-[80cqw] flex-wrap justify-center font-extrabold leading-[1.12] tracking-tight ${line.lang === "ja" ? "" : "gap-x-[0.26em]"}`}
+      style={{ fontSize }}
+      initial={{ y: 30, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ type: "spring", stiffness: 200, damping: 28 }}
+    >
+      {line.words.map((w, i) => {
+        const sung = i < revealed;
+        const active = i === revealed - 1;
+        const color = wordColor(line, i, palette, seed);
+        return (
+          <motion.span
+            key={i}
+            className="inline-block origin-bottom"
+            animate={{
+              opacity: sung ? 1 : 0.22,
+              filter: sung ? "blur(0px)" : "blur(1.5px)",
+              scale: active ? 1.04 : 1,
+              color: sung ? color : LABEL,
+            }}
+            transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+          >
+            {w.text}
+          </motion.span>
+        );
+      })}
+    </motion.p>
+  );
+}

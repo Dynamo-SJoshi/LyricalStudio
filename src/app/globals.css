@@ -71,3 +71,56 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ---------- Ambient background blobs (Apple Music-style) ---------- */
+.ambient-blob {
+  position: absolute;
+  width: 70vmax;
+  height: 70vmax;
+  border-radius: 9999px;
+  filter: blur(60px);
+  opacity: 0.75;
+  transition: background 1.2s ease;
+  will-change: transform;
+}
+.ambient-blob-0 { top: -30vmax; left: -20vmax; animation: drift-a 26s ease-in-out infinite alternate; }
+.ambient-blob-1 { bottom: -35vmax; right: -25vmax; animation: drift-b 32s ease-in-out infinite alternate; }
+.ambient-blob-2 { top: 10vmax; left: 30vw; width: 50vmax; height: 50vmax; animation: drift-c 22s ease-in-out infinite alternate; }
+
+@keyframes drift-a { to { transform: translate(18vw, 22vh) scale(1.15); } }
+@keyframes drift-b { to { transform: translate(-20vw, -18vh) scale(1.1); } }
+@keyframes drift-c { to { transform: translate(-25vw, 15vh) scale(0.85); } }
+
+/* ---------- Instrumental break dots ---------- */
+.interlude-dot { animation: breathe 1.6s var(--ease-spring) infinite; opacity: 0.35; }
+@keyframes breathe {
+  0%, 100% { transform: scale(0.7); opacity: 0.35; }
+  50% { transform: scale(1.15); opacity: 1; }
+}
+
+/* ---------- Range sliders (progress, volume) ---------- */
+.range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  min-width: 0;
+  width: 100%;
+  border-radius: 9999px;
+  background: linear-gradient(to right, var(--foreground) var(--fill, 0%), rgba(255, 255, 255, 0.2) var(--fill, 0%));
+  cursor: pointer;
+  transition: height 0.15s var(--ease-spring);
+}
+.range:hover { height: 6px; }
+.range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  background: var(--foreground);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.range:hover::-webkit-slider-thumb { opacity: 1; }
+.range::-moz-range-thumb { width: 12px; height: 12px; border: 0; border-radius: 9999px; background: var(--foreground); }
+
+select option { background: #1c1c1e; color: var(--foreground); }

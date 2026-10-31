@@ -4,14 +4,26 @@ An open-source music player for the web that turns lyrics into kinetic typograph
 
 Inspired by the [Cotodama Lyric Speaker](https://cotodama-speaker.com/). Not affiliated with Cotodama or Apple.
 
-## Features (planned)
+## Features
 
-- Search and play almost any song for free
-- Lyrics synced to playback, animated word by word
-- Multiple motion templates chosen by the song's genre and pace
-- Album-art color themes, glass materials and smooth spring motion
-- English, Japanese (日本語) and Hindi (हिन्दी) lyrics
-- Login to save likes and playlists
+- Search and play almost any song for free (YouTube Music catalog)
+- Lyrics synced to playback and animated word by word
+- Six motion styles (Stack, Burst, Zoom, Scatter, Flow, Vertical), picked per line from the song's genre, pace and chorus, or chosen by hand
+- Colors and a moving background taken from each song's album art, glass controls, spring motion
+- English, Japanese (日本語) and Hindi (हिन्दी); romanized lines appear as subtitles
+- Per-song sync nudge if lyrics run early or late
+- Liked songs, recently played, and an up-next queue
+- Optional login (Google, GitHub or email link) through Supabase
+
+### Keyboard shortcuts
+
+| Key | Action |
+| --- | --- |
+| Ctrl K or / | Search |
+| Space | Play / pause |
+| Left / Right | Back / forward 5 seconds |
+| [ / ] | Lyrics earlier / later by 0.25 s |
+| Esc | Close search |
 
 ## How it works
 
@@ -33,11 +45,19 @@ Requires Node.js 20 or later.
 git clone https://github.com/<your-username>/LyricalStudio-Web.git
 cd LyricalStudio-Web
 npm install
-cp .env.example .env.local   # then fill in your Supabase keys
 npm run dev
 ```
 
-Open http://localhost:3000.
+Open http://localhost:3000. That's all you need: without Supabase keys the app runs in **guest mode**, and likes are saved in your browser.
+
+### Turning on accounts (optional)
+
+1. Create a free project at [supabase.com](https://supabase.com).
+2. In the SQL Editor, run [`supabase/schema.sql`](supabase/schema.sql) to create the likes table.
+3. Copy `.env.example` to `.env.local` and fill in the Project URL and anon key (Project Settings → API).
+4. Under Authentication → URL Configuration, add `http://localhost:3000` (and your deployed URL) to the redirect URLs.
+5. Optionally enable Google and GitHub under Authentication → Providers. Email links work out of the box.
+6. Restart `npm run dev`. Everyone must now sign in, and likes sync to their account.
 
 ## Contributing
 
