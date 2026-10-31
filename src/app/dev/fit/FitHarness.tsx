@@ -40,7 +40,7 @@ declare global {
 }
 
 const TEMPLATE_IDS = Object.keys(TEMPLATES) as TemplateId[];
-const SINGLE_WORD: TemplateId[] = ["burst"];
+const SINGLE_WORD: TemplateId[] = [];
 
 async function loadSong(q: string): Promise<{ name: string; lines: LyricLine[] } | null> {
   const search = (await (await fetch(`/api/search?q=${encodeURIComponent(q)}`)).json()) as { tracks?: Track[] };

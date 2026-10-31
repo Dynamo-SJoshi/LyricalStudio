@@ -8,7 +8,7 @@ Inspired by the [Cotodama Lyric Speaker](https://cotodama-speaker.com/). Not aff
 
 - Search and play almost any song for free (YouTube Music catalog)
 - Lyrics synced to playback and animated word by word
-- Eight Cotodama-style text layouts (Stack, Slide, Burst, Zoom, Letters, Scatter, Graph, Flow), picked per line from the song's genre, pace and chorus, or chosen by hand
+- Seven Cotodama-style text layouts (Stack, Slide, Zoom, Letters, Scatter, Graph, Flow), picked per line from the song's genre, pace and chorus, or chosen by hand
 - A Liquid Glass background drawn on the GPU (WebGL): flowing album-colored light under an undulating glass slab, with ripples spreading from each word as it's sung and a wave of light on every new line
 - Premium type: clean white lyrics with one soft, luminous highlight per line in the album's tint
 - Smooth, cinematic motion: gliding springs, a slow camera push-in, squash-and-stretch word entrances and ghost-trail motion blur

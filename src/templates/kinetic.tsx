@@ -30,7 +30,7 @@ type KineticProps = {
   transition?: Timing;
   className?: string;
   style?: React.CSSProperties;
-  /** include in FitBox measurement (Burst measures only the active word) */
+  /** include in FitBox measurement (default true) */
   measure?: boolean;
   children: React.ReactNode;
 };

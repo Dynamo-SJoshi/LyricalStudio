@@ -3,7 +3,6 @@ import type { LyricLine } from "@/lib/types";
 import { hashString } from "@/lib/theme/palette";
 import { rng, type TemplateProps } from "./shared";
 import { Stack } from "./Stack";
-import { Burst } from "./Burst";
 import { Zoom } from "./Zoom";
 import { Scatter } from "./Scatter";
 import { Flow } from "./Flow";
@@ -14,7 +13,6 @@ import { Graph } from "./Graph";
 export const TEMPLATES = {
   stack: { name: "Stack", component: Stack },
   slide: { name: "Slide", component: Slide },
-  burst: { name: "Burst", component: Burst },
   zoom: { name: "Zoom", component: Zoom },
   letters: { name: "Letters", component: Letters },
   scatter: { name: "Scatter", component: Scatter },
@@ -60,9 +58,9 @@ export function chooseScene(line: LyricLine, songSeed: number, genre?: string, f
 
   let template: TemplateId;
   if (forced) template = forced;
-  else if (n <= 2) template = pick(r, [["burst", 3], ["zoom", 2], ["letters", 2]]);
+  else if (n <= 2) template = pick(r, [["zoom", 3], ["letters", 2], ["stack", 1]]);
   else if (n > 11 || wps > 3.8) template = pick(r, [["flow", 3], ["slide", 2]]);
-  else if (chorus && n <= 7) template = energetic ? pick(r, [["zoom", 2], ["slide", 2], ["letters", 1]]) : pick(r, [["burst", 2], ["letters", 1], ["stack", 1]]);
+  else if (chorus && n <= 7) template = energetic ? pick(r, [["zoom", 2], ["slide", 2], ["letters", 1]]) : pick(r, [["stack", 2], ["letters", 1], ["zoom", 1]]);
   else
     template = pick(r, [
       ["stack", calm ? 3 : 2],
@@ -72,7 +70,6 @@ export function chooseScene(line: LyricLine, songSeed: number, genre?: string, f
       ["zoom", energetic ? 2 : 1],
       ["letters", 1.5],
       ["flow", calm ? 2 : 0.5],
-      ["burst", n <= 4 ? 2 : 0.3],
     ]);
 
   const tilt = template === "graph" || r() > 0.32 ? 0 : (r() - 0.5) * 7;
