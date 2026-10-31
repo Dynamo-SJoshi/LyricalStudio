@@ -1,7 +1,7 @@
 "use client";
 
 import { KineticWord } from "./kinetic";
-import { fitFont, groupRows, rng, wordColor, type TemplateProps } from "./shared";
+import { fitFont, groupRows, rng, wordLook, type TemplateProps } from "./shared";
 
 /** Huge staggered rows that slide in from the edges and run off the stage, cropped. */
 export function Slide({ line, revealed, palette, seed }: TemplateProps) {
@@ -31,7 +31,7 @@ export function Slide({ line, revealed, palette, seed }: TemplateProps) {
                   from={{ x: fromLeft ? -1.1 : 5, opacity: 0, scaleX: fromLeft ? 1.2 : 1.45, scaleY: 0.85, skewX: fromLeft ? -10 : 16 }}
                   transition={{ type: "spring", stiffness: 120, damping: 22 }}
                   className="inline-block font-black tracking-tight"
-                  style={{ color: wordColor(line, i, palette, seed) }}
+                  look={wordLook(line, i, palette, seed)}
                 >
                   {w.text}
                 </KineticWord>

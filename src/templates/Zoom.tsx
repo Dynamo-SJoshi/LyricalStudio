@@ -1,7 +1,7 @@
 "use client";
 
 import { KineticWord } from "./kinetic";
-import { fitFont, groupRows, softSpring, wordColor, type TemplateProps } from "./shared";
+import { fitFont, groupRows, softSpring, wordLook, type TemplateProps } from "./shared";
 
 /** Words fly in from huge and blurred, settling into centered rows. Energetic songs. */
 export function Zoom({ line, revealed, palette, seed }: TemplateProps) {
@@ -23,7 +23,7 @@ export function Zoom({ line, revealed, palette, seed }: TemplateProps) {
                 from={{ scale: 2.6, opacity: 0, scaleY: 0.75, skewX: -10 }}
                 transition={softSpring}
                 className="inline-block font-black tracking-tight"
-                style={{ color: wordColor(line, i, palette, seed) }}
+                look={wordLook(line, i, palette, seed)}
               >
                 {w.text}
               </KineticWord>

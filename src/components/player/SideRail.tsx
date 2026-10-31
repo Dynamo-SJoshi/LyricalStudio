@@ -15,7 +15,7 @@ export function SideRail({ videoBig, onToggleVideo }: { videoBig: boolean; onTog
   const upcoming = Math.max(0, queue.length - index - 1);
 
   return (
-    <div className="flex flex-col items-end gap-3">
+    <div className="flex items-center gap-2">
       <RailButton
         label="Up next"
         active={queueOpen}
@@ -78,7 +78,7 @@ function RailButton({
       aria-label={label}
       title={label}
       aria-pressed={active}
-      className={`glass relative flex size-12 items-center justify-center rounded-full transition duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:scale-105 active:scale-95 disabled:opacity-35 ${active ? "bg-white/20 ring-2 ring-white/40" : ""}`}
+      className={`glass relative flex size-10 items-center justify-center rounded-full transition duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:scale-105 active:scale-95 disabled:opacity-35 ${active ? "bg-white/20 ring-2 ring-white/40" : ""}`}
     >
       {children}
       {badge !== undefined && (
@@ -123,7 +123,7 @@ function QueuePanel({ onClose }: { onClose: () => void }) {
         <h3 className="text-lg font-bold">Up next</h3>
         <span className="text-xs text-secondary">{upcoming.length} songs</span>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:thin]">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         {upcoming.length === 0 && <p className="px-3 py-3 text-sm text-secondary">Nothing queued yet. Play something and related songs will appear here.</p>}
         {upcoming.map((t, k) => (
           <button

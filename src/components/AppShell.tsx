@@ -120,14 +120,15 @@ function Studio() {
           )}
         </div>
         <SearchPanel />
-        <div className="flex w-[260px] items-center justify-end gap-2">
+        <div className="flex w-[300px] items-center justify-end gap-2">
           <UserMenu />
+          {current && <SideRail videoBig={videoBig} onToggleVideo={() => setVideoBig((v) => !v)} />}
           <FullscreenButton />
         </div>
       </header>
 
       {/* lyrics stage: sized with container units so lyrics never run under the video tile */}
-      <main className="fixed top-[76px] bottom-[120px] left-6 right-[248px] z-10" style={{ containerType: "size" }}>
+      <main className={`fixed top-[76px] bottom-[120px] left-6 z-10 ${view === "home" || !current ? "right-6" : "right-[248px]"}`} style={{ containerType: "size" }}>
         {view === "home" || !current ? (
           <HomeView />
         ) : (
@@ -145,9 +146,6 @@ function Studio() {
         )}
       </main>
 
-      <aside className="fixed top-[76px] right-6 z-30 w-[200px]">
-        <SideRail videoBig={videoBig} onToggleVideo={() => setVideoBig((v) => !v)} />
-      </aside>
       <YouTubeTile big={videoBig} onShrink={() => setVideoBig(false)} />
 
       <footer className="fixed inset-x-6 bottom-5 z-30">

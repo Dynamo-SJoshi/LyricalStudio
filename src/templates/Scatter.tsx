@@ -1,7 +1,7 @@
 "use client";
 
 import { KineticWord } from "./kinetic";
-import { fitFontLen, rng, spring, visualLength, wordColor, type TemplateProps } from "./shared";
+import { fitFontLen, rng, spring, visualLength, wordLook, type TemplateProps } from "./shared";
 
 /** A collage: words in different sizes, offsets and the odd vertical word. */
 export function Scatter({ line, revealed, palette, seed }: TemplateProps) {
@@ -31,10 +31,10 @@ export function Scatter({ line, revealed, palette, seed }: TemplateProps) {
             shown={shown}
             from={{ x: l.fromX, y: l.fromY, opacity: 0, scale: 0.7, skewX: l.fromX * 6, rotate: l.fromY * 8 }}
             transition={spring}
+            look={wordLook(line, i, palette, seed)}
             className="inline-block font-black leading-none tracking-tight"
             style={{
               fontSize: `${l.scale}em`,
-              color: wordColor(line, i, palette, seed),
               writingMode: l.rotate ? "vertical-rl" : undefined,
               top: `${l.offset}em`, // layout offset (not a transform) so FitBox can measure it
             }}

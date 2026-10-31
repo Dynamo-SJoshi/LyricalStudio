@@ -12,7 +12,7 @@ export function YouTubeTile({ big, onShrink }: { big: boolean; onShrink: () => v
 
   return (
     <div
-      className={`fixed right-6 bottom-[120px] z-40 flex flex-col items-end gap-2 transition-opacity ${current ? "opacity-100" : "pointer-events-none opacity-0"}`}
+      className={`fixed right-6 bottom-[112px] z-40 flex flex-col items-end gap-2 transition-opacity duration-500 ${current ? "opacity-100" : "pointer-events-none opacity-0"}`}
     >
       {big && (
         <button
@@ -23,12 +23,15 @@ export function YouTubeTile({ big, onShrink }: { big: boolean; onShrink: () => v
           Shrink video
         </button>
       )}
-      <div
-        ref={attachHost}
-        className="overflow-hidden rounded-2xl bg-black/40 shadow-2xl ring-1 ring-white/10 transition-[width,height] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
-        style={big ? { width: "min(720px, 58vw)", height: "calc(min(720px, 58vw) * 9 / 16)" } : { width: 200, height: 200 }}
-        title="Playing via YouTube"
-      />
+      {/* glass frame around the player (the frame never overlaps the video itself) */}
+      <div className="glass rounded-[26px] p-1.5 shadow-[0_24px_60px_rgba(0,0,0,0.45)]">
+        <div
+          ref={attachHost}
+          className="overflow-hidden rounded-[20px] bg-black transition-[width,height] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
+          style={big ? { width: "min(720px, 58vw)", height: "calc(min(720px, 58vw) * 9 / 16)" } : { width: 200, height: 200 }}
+          title="Playing via YouTube"
+        />
+      </div>
       {error && <p className="w-[200px] text-[11px] text-[var(--system-red)]">{error}</p>}
     </div>
   );

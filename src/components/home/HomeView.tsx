@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import type { Track } from "@/lib/types";
 import { usePlayer } from "@/components/player/PlayerProvider";
@@ -80,7 +80,7 @@ export function HomeView() {
   };
 
   return (
-    <div className="h-full overflow-y-auto pr-2 pb-10 [scrollbar-width:thin]">
+    <div className="h-full overflow-y-auto pb-[240px]">
       <motion.h1
         className="pt-2 text-[clamp(32px,4.2cqw,56px)] font-black tracking-tight"
         initial={{ opacity: 0, y: 12 }}
@@ -113,38 +113,57 @@ export function HomeView() {
   );
 }
 
-function RowHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+/** A titled, horizontally scrolling row with ‹ › buttons (scrollbars are hidden). */
+function Row({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const page = (dir: number) => ref.current?.scrollBy({ left: dir * ref.current.clientWidth * 0.8, behavior: "smooth" });
   return (
-    <div className="mt-9 mb-3">
-      <h2 className="text-[22px] font-bold tracking-tight">{title}</h2>
-      {subtitle && <p className="text-sm text-secondary">{subtitle}</p>}
-    </div>
+    <section>
+      {/* arrows sit beside the title, so the floating mini-player never covers them */}
+      <div className="mt-9 mb-3 flex items-end gap-4">
+        <div>
+          <h2 className="text-[22px] font-bold tracking-tight">{title}</h2>
+          {subtitle && <p className="text-sm text-secondary">{subtitle}</p>}
+        </div>
+        <div className="flex gap-2 pb-0.5">
+          {[-1, 1].map((dir) => (
+            <button
+              key={dir}
+              onClick={() => page(dir)}
+              aria-label={dir < 0 ? "Scroll left" : "Scroll right"}
+              className="glass flex size-9 items-center justify-center rounded-full transition hover:scale-105 hover:bg-white/15 active:scale-95"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d={dir < 0 ? "M15 5l-7 7 7 7" : "M9 5l7 7-7 7"} />
+              </svg>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div ref={ref} className="-mx-3 flex snap-x scroll-px-3 gap-4 overflow-x-auto px-3 pb-3">
+        {children}
+      </div>
+    </section>
   );
 }
 
 function SongRow({ title, subtitle, tracks, onPlay }: { title: string; subtitle?: string; tracks: Track[]; onPlay: (i: number) => void }) {
   return (
-    <section>
-      <RowHeader title={title} subtitle={subtitle} />
-      <div className="-mx-3 flex snap-x scroll-px-3 gap-4 overflow-x-auto px-3 pb-3 [scrollbar-width:thin]">
-        {tracks.map((t, i) => (
-          <Card key={`${t.videoId}-${i}`} artwork={t.artwork} title={t.title} subtitle={t.artist} onClick={() => onPlay(i)} index={i} />
-        ))}
-      </div>
-    </section>
+    <Row title={title} subtitle={subtitle}>
+      {tracks.map((t, i) => (
+        <Card key={`${t.videoId}-${i}`} artwork={t.artwork} title={t.title} subtitle={t.artist} onClick={() => onPlay(i)} index={i} />
+      ))}
+    </Row>
   );
 }
 
 function PlaylistRow({ title, playlists, onOpen }: { title: string; playlists: PlaylistCard[]; onOpen: (p: PlaylistCard) => void }) {
   return (
-    <section>
-      <RowHeader title={title} />
-      <div className="-mx-3 flex snap-x scroll-px-3 gap-4 overflow-x-auto px-3 pb-3 [scrollbar-width:thin]">
-        {playlists.map((p, i) => (
-          <Card key={p.id} artwork={p.artwork} title={p.title} subtitle={p.subtitle} onClick={() => onOpen(p)} index={i} large />
-        ))}
-      </div>
-    </section>
+    <Row title={title}>
+      {playlists.map((p, i) => (
+        <Card key={p.id} artwork={p.artwork} title={p.title} subtitle={p.subtitle} onClick={() => onOpen(p)} index={i} large />
+      ))}
+    </Row>
   );
 }
 

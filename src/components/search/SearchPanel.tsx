@@ -45,11 +45,6 @@ export function SearchPanel() {
     };
   }, []);
 
-  // open automatically when nothing is playing
-  useEffect(() => {
-    if (!current) inputRef.current?.focus();
-  }, [current]);
-
   // debounced search
   useEffect(() => {
     const q = query.trim();

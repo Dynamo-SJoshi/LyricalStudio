@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { useReducedMotionConfig } from "motion/react";
-import { lyricShadow } from "./shared";
+import { fillStyle, lyricShadow, type WordLook } from "./shared";
 import { animateTo, poseTransform, resolveTiming, REST, type Pose, type Timing } from "./waapi";
 
 /**
@@ -32,6 +32,8 @@ type KineticProps = {
   style?: React.CSSProperties;
   /** include in FitBox measurement (Burst measures only the active word) */
   measure?: boolean;
+  /** premium paint: gradient fill, glow and trail color */
+  look?: WordLook;
   children: React.ReactNode;
 };
 
@@ -41,7 +43,7 @@ const GHOSTS = [
 ];
 
 /** A word that glides between a hidden and a shown pose, with trailing motion blur. */
-export function KineticWord({ shown, from, to, transition, className, style, measure = true, children }: KineticProps) {
+export function KineticWord({ shown, from, to, transition, className, style, measure = true, look, children }: KineticProps) {
   const reduce = useReducedMotionConfig() ?? false;
   const mainRef = useRef<HTMLSpanElement>(null);
   const ghostA = useRef<HTMLSpanElement>(null);
@@ -95,16 +97,16 @@ export function KineticWord({ shown, from, to, transition, className, style, mea
     <span
       data-fit={measure ? "" : undefined}
       className={className}
-      style={{ ...positioned, textShadow: lyricShadow(style?.color as string | undefined), ...style }}
+      style={{ ...positioned, ...(look ? {} : { textShadow: lyricShadow(style?.color as string | undefined) }), ...style }}
     >
-      <span ref={ghostB} aria-hidden className="pointer-events-none absolute inset-0" style={{ textShadow: "none" }}>
+      <span ref={ghostB} aria-hidden className="pointer-events-none absolute inset-0" style={{ textShadow: "none", color: look?.trail }}>
         {children}
       </span>
-      <span ref={ghostA} aria-hidden className="pointer-events-none absolute inset-0" style={{ textShadow: "none" }}>
+      <span ref={ghostA} aria-hidden className="pointer-events-none absolute inset-0" style={{ textShadow: "none", color: look?.trail }}>
         {children}
       </span>
       <span ref={mainRef} className="relative inline-block">
-        {children}
+        {look ? <PaintLayers look={look}>{children}</PaintLayers> : children}
       </span>
     </span>
   );
@@ -149,6 +151,44 @@ export function KineticSpan({
   return (
     <span ref={ref} className={`inline-block ${className ?? ""}`}>
       {children}
+    </span>
+  );
+}
+
+/**
+ * A word painted with its look: the shadow/glow sits on its own layer behind the
+ * gradient (a text-shadow on gradient-filled text would be drawn over the gradient).
+ */
+function PaintLayers({ look, children }: { look: WordLook; children: React.ReactNode }) {
+  return (
+    <>
+      <span aria-hidden className="pointer-events-none absolute inset-0 select-none" style={{ color: "transparent", textShadow: look.shadow }}>
+        {children}
+      </span>
+      <span className="relative" style={fillStyle(look)}>
+        {children}
+      </span>
+    </>
+  );
+}
+
+/** A static painted word (for layouts that animate words themselves). */
+export function Painted({
+  look,
+  className,
+  style,
+  measure,
+  children,
+}: {
+  look: WordLook;
+  className?: string;
+  style?: React.CSSProperties;
+  measure?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <span data-fit={measure ? "" : undefined} className={`relative inline-block ${className ?? ""}`} style={style}>
+      <PaintLayers look={look}>{children}</PaintLayers>
     </span>
   );
 }

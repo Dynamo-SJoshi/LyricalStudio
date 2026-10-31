@@ -3,7 +3,7 @@
 import { motion } from "motion/react";
 import type { Track } from "@/lib/types";
 import type { Palette } from "@/lib/theme/palette";
-import { fitFont, LABEL, lyricShadow, vivid } from "@/templates/shared";
+import { fillStyle, fitFont, vivid, type WordLook } from "@/templates/shared";
 
 /** Song title card: shown before the first lyric, at the end, and when there are no lyrics. */
 export function TitleCard({
@@ -28,9 +28,10 @@ export function TitleCard({
       <motion.h2
         data-fit=""
         className="font-black leading-[1.02] tracking-tighter"
-        style={{ fontSize, color: LABEL, textShadow: lyricShadow(vivid(palette.accents[0])) }}
-        initial={{ y: 40, opacity: 0, filter: "blur(16px)" }}
-        animate={{ y: 0, opacity: 1, filter: "blur(0px)" }}
+        style={{ fontSize, ...fillStyle(titleLook(palette)) }}
+        // the glow lives in the same filter the entrance animates (so it isn't overwritten)
+        initial={{ y: 40, opacity: 0, filter: `blur(16px) drop-shadow(0 0 0.35em ${vivid(palette.accents[0], 0.6)})` }}
+        animate={{ y: 0, opacity: 1, filter: `blur(0px) drop-shadow(0 0 0.35em ${vivid(palette.accents[0], 0.6)})` }}
         transition={{ type: "spring", stiffness: 140, damping: 22 }}
       >
         {track.title}
@@ -56,4 +57,10 @@ export function TitleCard({
       )}
     </div>
   );
+}
+
+function titleLook(palette: Palette): WordLook {
+  const top = vivid(palette.accents[0], 0.8);
+  const bottom = vivid(palette.accents[1], 0.64);
+  return { fill: `linear-gradient(172deg, #ffffff 0%, ${top} 45%, ${bottom} 100%)`, shadow: "none", trail: top, highlight: true };
 }

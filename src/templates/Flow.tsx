@@ -1,7 +1,8 @@
 "use client";
 
 import { motion } from "motion/react";
-import { fitFontLen, LABEL, lyricShadow, visualLength, wordColor, type TemplateProps } from "./shared";
+import { fitFontLen, visualLength, wordLook, type TemplateProps } from "./shared";
+import { Painted } from "./kinetic";
 
 /** The whole line is visible but dim; words light up as they're sung. For fast or long lines. */
 export function Flow({ line, revealed, palette, seed }: TemplateProps) {
@@ -20,22 +21,17 @@ export function Flow({ line, revealed, palette, seed }: TemplateProps) {
       {line.words.map((w, i) => {
         const sung = i < revealed;
         const active = i === revealed - 1;
-        const color = wordColor(line, i, palette, seed);
+        const look = wordLook(line, i, palette, seed);
         return (
-          <span
+          <Painted
             key={i}
-            data-fit=""
-            className="inline-block origin-bottom transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
-            // the highlight color appears once the word is sung
-            style={{
-              color: sung ? color : LABEL,
-              textShadow: lyricShadow(sung ? color : undefined),
-              opacity: sung ? 1 : 0.32,
-              transform: active ? "scale(1.04)" : "scale(1)",
-            }}
+            measure
+            look={look}
+            className="origin-bottom transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+            style={{ opacity: sung ? 1 : 0.32, transform: active ? "scale(1.04)" : "scale(1)" }}
           >
             {w.text}
-          </span>
+          </Painted>
         );
       })}
     </motion.p>
