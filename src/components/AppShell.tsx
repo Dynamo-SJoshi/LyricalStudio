@@ -16,11 +16,13 @@ import { LikesProvider } from "@/lib/library/likes";
 import { readOffset, writeOffset } from "@/lib/library/recent";
 import { useTrackData } from "@/lib/lyrics/useTrackData";
 import { TEMPLATES, type TemplateChoice } from "@/templates";
+import { MotionBlurDefs } from "@/templates/kinetic";
 
 export function AppShell() {
   return (
     // honors the OS "reduce motion" setting for every animation
     <MotionConfig reducedMotion="user">
+      <MotionBlurDefs />
       <AuthProvider>
         <Gate />
       </AuthProvider>
@@ -102,7 +104,7 @@ function Studio() {
       </header>
 
       {/* lyrics stage: sized with container units so lyrics never run under the video tile */}
-      <main className="fixed top-[76px] bottom-[120px] left-6 right-[404px] z-10" style={{ containerType: "size" }}>
+      <main className="fixed top-[76px] bottom-[120px] left-6 right-[272px] z-10" style={{ containerType: "size" }}>
         {current ? (
           <LyricsStage
             track={current}
@@ -120,7 +122,7 @@ function Studio() {
         )}
       </main>
 
-      <aside className="fixed top-[76px] right-6 bottom-[120px] z-20 flex w-[356px] flex-col gap-4">
+      <aside className="fixed top-[76px] right-6 bottom-[120px] z-20 flex w-[224px] flex-col gap-4">
         <UpNext />
         <YouTubeTile />
       </aside>

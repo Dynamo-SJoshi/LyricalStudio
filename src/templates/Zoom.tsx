@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "motion/react";
+import { KineticWord } from "./kinetic";
 import { fitFont, groupRows, softSpring, wordColor, type TemplateProps } from "./shared";
 
 /** Words fly in from huge and blurred, settling into centered rows. Energetic songs. */
@@ -17,20 +17,16 @@ export function Zoom({ line, revealed, palette, seed }: TemplateProps) {
             const i = k++;
             const shown = i < revealed;
             return (
-              <motion.span
+              <KineticWord
                 key={i}
-                className="inline-block font-black tracking-tight"
-                initial={{ scale: 3, opacity: 0, filter: "blur(24px)" }}
-                animate={
-                  shown
-                    ? { scale: 1, opacity: 1, filter: "blur(0px)" }
-                    : { scale: 3, opacity: 0, filter: "blur(24px)" }
-                }
+                shown={shown}
+                from={{ scale: 3, opacity: 0 }}
                 transition={softSpring}
+                className="inline-block font-black tracking-tight"
                 style={{ color: wordColor(line, i, palette, seed) }}
               >
                 {w.text}
-              </motion.span>
+              </KineticWord>
             );
           })}
         </div>

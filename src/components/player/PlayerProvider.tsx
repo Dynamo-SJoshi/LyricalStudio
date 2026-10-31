@@ -58,14 +58,21 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   const current = index >= 0 ? queue[index] ?? null : null;
 
+  /** The player, but only once its API is actually usable (the object exists before onReady). */
+  const api = useCallback((): YTPlayer | null => {
+    const p = playerRef.current;
+    return p && readyRef.current && typeof p.getCurrentTime === "function" ? p : null;
+  }, []);
+
   const load = useCallback((videoId: string) => {
     clock.current.reset(0);
     setDuration(0);
     setStatus("loading");
     setError(null);
-    if (readyRef.current && playerRef.current) playerRef.current.loadVideoById(videoId);
+    const p = api();
+    if (p) p.loadVideoById(videoId);
     else pendingRef.current = videoId;
-  }, []);
+  }, [api]);
 
   const goTo = useCallback(
     (i: number) => {
@@ -94,35 +101,35 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   const next = useCallback(() => goTo(stateRef.current.index + 1), [goTo]);
   const prev = useCallback(() => {
-    const p = playerRef.current;
+    const p = api();
     if (p && p.getCurrentTime() > 3) p.seekTo(0, true);
     else goTo(Math.max(0, stateRef.current.index - 1));
-  }, [goTo]);
+  }, [goTo, api]);
 
   const toggle = useCallback(() => {
-    const p = playerRef.current;
-    if (!p || !readyRef.current) return;
+    const p = api();
+    if (!p) return;
     if (p.getPlayerState() === YTState.PLAYING) p.pauseVideo();
     else p.playVideo();
-  }, []);
+  }, [api]);
 
   const seek = useCallback((s: number) => {
-    playerRef.current?.seekTo(Math.max(0, s), true);
+    api()?.seekTo(Math.max(0, s), true);
     clock.current.reset(Math.max(0, s));
-  }, []);
+  }, [api]);
 
   const setVolume = useCallback((v: number) => {
     const vol = Math.round(Math.min(100, Math.max(0, v)));
     setVolumeState(vol);
-    playerRef.current?.setVolume(vol);
+    api()?.setVolume(vol);
     localStorage.setItem("ls:volume", String(vol));
-  }, []);
+  }, [api]);
 
   const getTime = useCallback(() => {
-    const p = playerRef.current;
-    if (!p || !readyRef.current) return 0;
+    const p = api();
+    if (!p) return 0;
     return clock.current.sample(p.getCurrentTime() || 0);
-  }, []);
+  }, [api]);
 
   /** The embed was refused (e.g. label disallows embedding): try another upload of the same song. */
   const tryAlternate = useCallback(async () => {

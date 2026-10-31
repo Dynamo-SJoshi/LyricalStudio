@@ -97,9 +97,12 @@ export function chooseScene(line: LyricLine, songSeed: number, genre?: string, f
     under.push(second);
   }
   if (template === "graph") {
-    // the graph already draws its own lines
-    const i = under.indexOf("network");
-    if (i >= 0) under.splice(i, 1);
+    // the graph draws its own lines, and a big color block would swamp the tree
+    for (const k of ["network", "blob"] as const) {
+      const i = under.indexOf(k);
+      if (i >= 0) under.splice(i, 1);
+    }
+    if (!under.length) under.push("outlines");
   }
 
   // an inverting shape on top of the text, for punch

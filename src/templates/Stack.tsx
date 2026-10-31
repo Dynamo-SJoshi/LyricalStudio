@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "motion/react";
+import { KineticWord } from "./kinetic";
 import { fitFont, groupRows, rng, spring, wordColor, type TemplateProps } from "./shared";
 
 /** Words stack into big left- or right-aligned rows, each sliding up as it's sung. */
@@ -19,16 +19,16 @@ export function Stack({ line, revealed, palette, seed }: TemplateProps) {
             const i = k++;
             const shown = i < revealed;
             return (
-              <motion.span
+              <KineticWord
                 key={i}
-                className="inline-block font-black tracking-tight"
-                initial={{ y: "105%", opacity: 0 }}
-                animate={shown ? { y: "0%", opacity: 1 } : { y: "105%", opacity: 0 }}
+                shown={shown}
+                from={{ y: 1.1, opacity: 0 }}
                 transition={spring}
+                className="inline-block font-black tracking-tight"
                 style={{ color: wordColor(line, i, palette, seed) }}
               >
                 {w.text}
-              </motion.span>
+              </KineticWord>
             );
           })}
         </div>

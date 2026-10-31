@@ -43,7 +43,7 @@ function rgbToHsl(r: number, g: number, b: number): HSL {
 }
 
 const hsl = ([h, s, l]: HSL) =>
-  `hsl(${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%)`;
+  `hsl(${Math.round(h * 360)}, ${Math.round(s * 100)}%, ${Math.round(l * 100)}%)`;
 
 const hueDistance = (a: number, b: number) => Math.min(Math.abs(a - b), 1 - Math.abs(a - b));
 

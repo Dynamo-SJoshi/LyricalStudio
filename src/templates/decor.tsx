@@ -109,6 +109,17 @@ function Network({ seed, revealed, line }: DecorProps) {
   });
   const per = Math.max(1, line.words.length / n);
   return (
+    <>
+      {lines.map((l, i) => (
+        <motion.span
+          key={`dot${i}`}
+          className="absolute size-2.5 -translate-1/2 rounded-full"
+          style={{ left: `${(l.x1 + l.x2) / 2}cqw`, top: `${(l.y1 + l.y2) / 2}cqh`, background: PAPER }}
+          initial={{ opacity: 0, scale: 0 }}
+          animate={revealed >= i * per ? { opacity: 0.85, scale: 1 } : { opacity: 0, scale: 0 }}
+          transition={{ delay: 0.45, type: "spring", stiffness: 400, damping: 20 }}
+        />
+      ))}
     <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden>
       {lines.map((l, i) => {
         const shown = revealed >= i * per;
@@ -123,19 +134,11 @@ function Network({ seed, revealed, line }: DecorProps) {
               animate={{ pathLength: shown ? 1 : 0 }}
               transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
             />
-            <motion.circle
-              cx={l.x1 + (l.x2 - l.x1) * 0.5}
-              cy={l.y1 + (l.y2 - l.y1) * 0.5}
-              r={0.7}
-              fill={PAPER}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: shown ? 0.8 : 0 }}
-              transition={{ delay: 0.5 }}
-            />
           </g>
         );
       })}
     </svg>
+    </>
   );
 }
 

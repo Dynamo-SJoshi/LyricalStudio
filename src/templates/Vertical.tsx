@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "motion/react";
+import { KineticWord } from "./kinetic";
 import { spring, wordColor, type TemplateProps } from "./shared";
 
 /** Japanese-style vertical columns, read right to left; each phrase drops in from above. */
@@ -18,15 +18,15 @@ export function Vertical({ line, revealed, palette, seed }: TemplateProps) {
         const shown = i < revealed;
         return (
           <div key={i} className="overflow-hidden" style={{ marginTop: `${(i % 3) * 0.6}em` }}>
-            <motion.span
+            <KineticWord
+              shown={shown}
+              from={{ y: -1.1 * [...w.text].length, opacity: 0 }}
+              transition={spring}
               className="block font-black leading-[1.05]"
               style={{ writingMode: "vertical-rl", color: wordColor(line, i, palette, seed) }}
-              initial={{ y: "-100%", opacity: 0 }}
-              animate={shown ? { y: "0%", opacity: 1 } : { y: "-100%", opacity: 0 }}
-              transition={spring}
             >
               {w.text}
-            </motion.span>
+            </KineticWord>
           </div>
         );
       })}

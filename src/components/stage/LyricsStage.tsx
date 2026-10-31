@@ -82,13 +82,13 @@ export function LyricsStage({ track, lines, status, palette, seed, genre, offset
     key = `gap-${pos.line}`;
     content = (
       <>
-        <UnderLayer kinds={["network", "outlines"]} line={prev} revealed={prev.words.length} palette={palette} seed={seed ^ pos.line} />
+        <UnderLayer kinds={["network", "outlines"]} line={prev} revealed={prev.words.length} palette={palette} seed={(seed ^ pos.line) >>> 0} />
         <Interlude color={palette.accents[pos.line % 3]} />
       </>
     );
   } else {
     const line = lines[pos.line];
-    const lineSeed = seed ^ hashString(line.text);
+    const lineSeed = (seed ^ hashString(line.text)) >>> 0;
     const scene = chooseScene(line, seed, genre, template === "auto" ? undefined : template);
     const Template = TEMPLATES[scene.template].component;
     const decor = { line, revealed: pos.revealed, palette, seed: lineSeed };
@@ -130,7 +130,7 @@ export function LyricsStage({ track, lines, status, palette, seed, genre, offset
   return (
     <div className="relative h-full w-full overflow-hidden" aria-live="off">
       <AnimatePresence>
-        {echoLine && <Echo key={`echo-${pos.line}`} line={echoLine} color={palette.accents[(pos.line + 1) % 3]} seed={seed ^ pos.line} />}
+        {echoLine && <Echo key={`echo-${pos.line}`} line={echoLine} color={palette.accents[(pos.line + 1) % 3]} seed={(seed ^ pos.line) >>> 0} />}
       </AnimatePresence>
       <AnimatePresence initial={false}>
         <motion.div
@@ -138,7 +138,7 @@ export function LyricsStage({ track, lines, status, palette, seed, genre, offset
           className="absolute inset-0 flex items-center justify-center"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1, transition: { duration: 0.18 } }}
-          exit={{ opacity: 0, scale: 0.97, filter: "blur(10px)", transition: { duration: 0.32, ease: [0.4, 0, 1, 1] } }}
+          exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.3, ease: [0.4, 0, 1, 1] } }}
         >
           {content}
         </motion.div>
@@ -165,8 +165,8 @@ function Echo({ line, color, seed }: { line: LyricLine; color: string; seed: num
         [left ? "left" : "right"]: "4cqw",
         top: `${(r() < 0.5 ? 8 : 70) + r() * 10}cqh`,
       }}
-      initial={{ opacity: 0.75, x: 0, filter: "blur(0px)" }}
-      animate={{ opacity: 0, x: `${left ? -6 : 6}cqw`, filter: "blur(6px)" }}
+      initial={{ opacity: 0.75, x: "0cqw" }}
+      animate={{ opacity: 0, x: `${left ? -6 : 6}cqw` }}
       exit={{ opacity: 0 }}
       transition={{ duration: 2.2, ease: "easeOut" }}
     >

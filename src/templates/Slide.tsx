@@ -1,7 +1,7 @@
 "use client";
 
-import { motion } from "motion/react";
-import { fitFont, groupRows, rng, spring, wordColor, type TemplateProps } from "./shared";
+import { KineticWord } from "./kinetic";
+import { fitFont, groupRows, rng, wordColor, type TemplateProps } from "./shared";
 
 /** Huge staggered rows that slide in from the edges and run off the stage, cropped. */
 export function Slide({ line, revealed, palette, seed }: TemplateProps) {
@@ -24,16 +24,16 @@ export function Slide({ line, revealed, palette, seed }: TemplateProps) {
               const i = k++;
               const shown = i < revealed;
               return (
-                <motion.span
+                <KineticWord
                   key={i}
+                  shown={shown}
+                  from={{ x: fromLeft ? -7 : 7, opacity: 0 }}
+                  transition={{ type: "spring", stiffness: 170, damping: 24 }}
                   className="inline-block font-black tracking-tight"
                   style={{ color: wordColor(line, i, palette, seed) }}
-                  initial={{ x: fromLeft ? "-80cqw" : "80cqw", opacity: 0 }}
-                  animate={shown ? { x: "0cqw", opacity: 1 } : { x: fromLeft ? "-80cqw" : "80cqw", opacity: 0 }}
-                  transition={spring}
                 >
                   {w.text}
-                </motion.span>
+                </KineticWord>
               );
             })}
           </div>

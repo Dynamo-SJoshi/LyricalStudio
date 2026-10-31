@@ -78,7 +78,8 @@ export function groupRows(words: LyricWord[], maxRows: number): LyricWord[][] {
 }
 
 /** Color for a word: white by default, album accents for emphasis, dim for backing vocals. */
-export function wordColor(line: LyricLine, index: number, palette: Palette, seed: number) {
+export function wordColor(line: LyricLine, index: number, palette: Palette, rawSeed: number) {
+  const seed = rawSeed >>> 0;
   const w = line.words[index];
   if (w.backing) return SECONDARY;
   const accent = palette.accents[seed % 3];

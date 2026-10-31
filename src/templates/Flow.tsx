@@ -27,7 +27,6 @@ export function Flow({ line, revealed, palette, seed }: TemplateProps) {
             className="inline-block origin-bottom"
             animate={{
               opacity: sung ? 1 : 0.22,
-              filter: sung ? "blur(0px)" : "blur(1.5px)",
               scale: active ? 1.04 : 1,
               color: sung ? color : LABEL,
             }}

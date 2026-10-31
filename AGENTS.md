@@ -35,6 +35,8 @@ Open-source (MIT) web music player whose main feature is Cotodama-style kinetic 
 - Lyric stage uses CSS container units (cqw/cqh), not vw/vh, so lyrics never run under the YouTube tile.
 - Auth is client-side only (Supabase browser client). Without keys the app runs in guest mode.
 - Load external artwork with referrerPolicy="no-referrer" (googleusercontent blocks some referrers).
+- Avoid animating CSS blur on big or many elements (it stutters). For motion blur use KineticWord / blurFor() in src/templates/kinetic.tsx.
+- Per-line seeds must be unsigned: (a ^ b) >>> 0. A negative seed % 3 indexes past the palette.
 
 ## Workflow
 - One tool per feature branch; open a PR into main.

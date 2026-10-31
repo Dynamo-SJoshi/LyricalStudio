@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "motion/react";
+import { KineticWord } from "./kinetic";
 import { fitFontLen, rng, spring, visualLength, wordColor, type TemplateProps } from "./shared";
 
 /** A collage: words in different sizes, offsets and the odd vertical word. */
@@ -10,11 +10,11 @@ export function Scatter({ line, revealed, palette, seed }: TemplateProps) {
   // aim for ~3 rows of text at the base size
   const base = fitFontLen(total / 3 + 1, 3, { maxVw: 11, heightVh: 55 });
   const layout = line.words.map((w) => ({
-    scale: 0.65 + r() * 0.75,
+    scale: 0.65 + r() * 0.6,
     rotate: w.text.length <= 6 && r() < 0.22 ? -90 : 0,
     offset: (r() - 0.5) * 0.5,
-    fromX: (r() - 0.5) * 120,
-    fromY: (r() - 0.5) * 120,
+    fromX: (r() - 0.5) * 3,
+    fromY: (r() - 0.5) * 2,
   }));
 
   return (
@@ -26,8 +26,11 @@ export function Scatter({ line, revealed, palette, seed }: TemplateProps) {
         const l = layout[i];
         const shown = i < revealed;
         return (
-          <motion.span
+          <KineticWord
             key={i}
+            shown={shown}
+            from={{ x: l.fromX, y: l.fromY, opacity: 0, scale: 0.7 }}
+            transition={spring}
             className="inline-block font-black leading-none tracking-tight"
             style={{
               fontSize: `${l.scale}em`,
@@ -35,12 +38,9 @@ export function Scatter({ line, revealed, palette, seed }: TemplateProps) {
               writingMode: l.rotate ? "vertical-rl" : undefined,
               translate: `0 ${l.offset}em`,
             }}
-            initial={{ opacity: 0, x: l.fromX, y: l.fromY, scale: 0.7 }}
-            animate={shown ? { opacity: 1, x: 0, y: 0, scale: 1 } : { opacity: 0, x: l.fromX, y: l.fromY, scale: 0.7 }}
-            transition={spring}
           >
             {w.text}
-          </motion.span>
+          </KineticWord>
         );
       })}
     </div>

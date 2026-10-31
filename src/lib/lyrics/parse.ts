@@ -139,7 +139,10 @@ export function buildLines(input: RawLine[], songDuration?: number): LyricLine[]
   for (let i = 0; i < raw.length; i++) {
     const r = raw[i];
     if (!r.text) continue; // empty timestamp = instrumental break marker
-    const next = raw[i + 1]?.start ?? songDuration ?? r.start + 8;
+    const nextRaw = raw[i + 1];
+    // an empty timestamped line is the lyric file's own "instrumental starts here" marker
+    const explicitBreak = !!nextRaw && !nextRaw.text;
+    const next = nextRaw?.start ?? Math.max(r.start + 4, songDuration ?? r.start + 8);
     const gap = Math.max(0.3, next - r.start);
     const lang = detectLang(r.text);
 
@@ -177,11 +180,15 @@ export function buildLines(input: RawLine[], songDuration?: number): LyricLine[]
     }
 
     const lastWordEnd = words.at(-1)?.end ?? r.start + 1;
+    // Singers often hold a line far longer than our word estimate, so the line stays
+    // up until the next one. Only a marked break, a very long silence, or the song's
+    // last line ends it early (that's when the instrumental dots appear).
+    let end = next;
+    if (!explicitBreak && (gap > 14 || !nextRaw)) end = Math.min(next, Math.max(lastWordEnd + 5, r.start + 9));
     lines.push({
       text: r.text,
       start: r.start,
-      // keep the line on screen until the next one, unless there's a long gap
-      end: next - lastWordEnd > 4 ? lastWordEnd + 2 : next,
+      end,
       words,
       lang,
       repeats: counts.get(norm(r.text)) ?? 1,
