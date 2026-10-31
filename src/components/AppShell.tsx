@@ -11,18 +11,17 @@ import { UpNext } from "@/components/player/UpNext";
 import { YouTubeTile } from "@/components/player/YouTubeTile";
 import { SearchPanel } from "@/components/search/SearchPanel";
 import { AmbientBackground } from "@/components/stage/AmbientBackground";
+import { FpsMeter } from "@/components/FpsMeter";
 import { LyricsStage } from "@/components/stage/LyricsStage";
 import { LikesProvider } from "@/lib/library/likes";
 import { readOffset, writeOffset } from "@/lib/library/recent";
 import { useTrackData } from "@/lib/lyrics/useTrackData";
 import { TEMPLATES, type TemplateChoice } from "@/templates";
-import { GooeyDefs } from "@/templates/kinetic";
 
 export function AppShell() {
   return (
     // honors the OS "reduce motion" setting for every animation
     <MotionConfig reducedMotion="user">
-      <GooeyDefs />
       <AuthProvider>
         <Gate />
       </AuthProvider>
@@ -94,6 +93,7 @@ function Studio() {
   return (
     <>
       <AmbientBackground palette={data.palette} artwork={data.artwork} />
+      <FpsMeter />
 
       <header className="fixed inset-x-0 top-0 z-30 flex items-center justify-between gap-4 px-6 pt-5">
         <span className="w-[200px] text-lg font-black tracking-tight">LyricalStudio</span>

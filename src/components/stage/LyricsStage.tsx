@@ -9,8 +9,7 @@ import { detectLang, lineAt } from "@/lib/lyrics/parse";
 import type { LyricsStatus } from "@/lib/lyrics/useTrackData";
 import { chooseScene, TEMPLATES, type Scene, type TemplateChoice } from "@/templates";
 import { FitBox } from "@/templates/FitBox";
-import { GlassInterlude, SceneFx } from "@/templates/decor";
-import { fitFont, glassVars, langAttr, rng } from "@/templates/shared";
+import { fitFont, langAttr, pastel, rng } from "@/templates/shared";
 import { TitleCard } from "./TitleCard";
 
 /** How far the camera pushes in over a line (FitBox accounts for it). */
@@ -55,9 +54,6 @@ export function LyricsStage({ track, lines, status, palette, seed, genre, offset
       }
       const p = posRef.current;
       if (p.mode !== next.mode || p.line !== next.line || p.revealed !== next.revealed) {
-        if (next.mode === "line" && (next.line !== p.line || next.revealed > p.revealed)) {
-          window.dispatchEvent(new CustomEvent("ls:word", { detail: { index: next.revealed } }));
-        }
         posRef.current = next;
         setPos(next);
       }
@@ -66,6 +62,35 @@ export function LyricsStage({ track, lines, status, palette, seed, genre, offset
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
   }, [lines, offset, getTime]);
+
+  // Tell the glass background where each new word landed, so it can ripple from there.
+  const rootRef = useRef<HTMLDivElement>(null);
+  const lastRipple = useRef({ line: -1, revealed: 0 });
+  useEffect(() => {
+    if (pos.mode !== "line") return;
+    const prev = lastRipple.current;
+    if (pos.line === prev.line && pos.revealed <= prev.revealed) return;
+    lastRipple.current = { line: pos.line, revealed: pos.revealed };
+    const newLine = pos.line !== prev.line;
+    const word = lines[pos.line]?.words[pos.revealed - 1];
+    // wait a frame so the word's element is laid out
+    const id = requestAnimationFrame(() => {
+      const els = rootRef.current?.querySelectorAll<HTMLElement>(`[data-line="${pos.line}"] [data-fit]`);
+      const el = els?.length ? els[Math.min(pos.revealed - 1, els.length - 1)] : null;
+      const r = el?.getBoundingClientRect();
+      window.dispatchEvent(
+        new CustomEvent("ls:word", {
+          detail: {
+            x: r ? (r.left + r.width / 2) / window.innerWidth : 0.5,
+            y: r ? (r.top + r.height / 2) / window.innerHeight : 0.5,
+            strength: word?.emphasis ? 1.5 : newLine ? 1.2 : 0.85,
+            newLine,
+          },
+        }),
+      );
+    });
+    return () => cancelAnimationFrame(id);
+  }, [pos, lines]);
 
   const noLyrics = status !== "synced" && status !== "unsynced";
   const caption =
@@ -90,16 +115,14 @@ export function LyricsStage({ track, lines, status, palette, seed, genre, offset
     );
   } else if (pos.mode === "gap") {
     key = `gap-${pos.line}`;
-    content = <GlassInterlude palette={palette} seed={(seed ^ pos.line) >>> 0} />;
+    content = <Interlude color={pastel(palette.accents[pos.line % 3])} />;
   } else {
     const line = lines[pos.line];
     const lineSeed = (seed ^ hashString(line.text)) >>> 0;
     const scene = chooseScene(line, seed, genre, template === "auto" ? undefined : template);
-    const decor = { line, revealed: pos.revealed, palette, seed: lineSeed };
     key = `line-${pos.line}`;
     content = (
-      <div lang={langAttr(line.lang)} className="lyric-pop absolute inset-0 flex items-center justify-center uppercase">
-        <SceneFx glass={scene.glass} droplets={scene.droplets} {...decor} />
+      <div data-line={pos.line} lang={langAttr(line.lang)} className="absolute inset-0 flex items-center justify-center uppercase">
         <LineText line={line} scene={scene} revealed={pos.revealed} palette={palette} seed={lineSeed} />
         {line.sub && (
           <motion.p
@@ -120,9 +143,9 @@ export function LyricsStage({ track, lines, status, palette, seed, genre, offset
   const echoLine = pos.mode === "line" && pos.line > 0 ? lines[pos.line - 1] : null;
 
   return (
-    <div className="relative h-full w-full overflow-hidden" aria-live="off">
+    <div ref={rootRef} className="relative h-full w-full overflow-hidden" aria-live="off">
       <AnimatePresence>
-        {echoLine && <Echo key={`echo-${pos.line}`} line={echoLine} color={palette.accents[(pos.line + 1) % 3]} seed={(seed ^ pos.line) >>> 0} />}
+        {echoLine && <Echo key={`echo-${pos.line}`} line={echoLine} color={pastel(palette.accents[(pos.line + 1) % 3], 0.78)} seed={(seed ^ pos.line) >>> 0} />}
       </AnimatePresence>
       <AnimatePresence initial={false}>
         <motion.div
@@ -190,10 +213,9 @@ function Echo({ line, color, seed }: { line: LyricLine; color: string; seed: num
     <motion.p
       aria-hidden
       lang={langAttr(line.lang)}
-      className="glass-glyph pointer-events-none absolute font-black whitespace-nowrap uppercase"
+      className="pointer-events-none absolute font-black whitespace-nowrap uppercase"
       style={{
         color,
-        ...glassVars(color),
         fontSize,
         [left ? "left" : "right"]: "5cqw",
         top: `${(r() < 0.5 ? 10 : 68) + r() * 8}cqh`,
@@ -205,5 +227,15 @@ function Echo({ line, color, seed }: { line: LyricLine; color: string; seed: num
     >
       {words}
     </motion.p>
+  );
+}
+
+function Interlude({ color }: { color: string }) {
+  return (
+    <div className="flex gap-4" aria-label="Instrumental">
+      {[0, 1, 2].map((i) => (
+        <span key={i} className="interlude-dot block size-4 rounded-full" style={{ background: color, animationDelay: `${i * 0.22}s` }} />
+      ))}
+    </div>
   );
 }

@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { animate, motion, useMotionValue, useReducedMotionConfig } from "motion/react";
 import { useElementSize } from "@/lib/useElementSize";
 import type { LyricWord } from "@/lib/types";
-import { glassVars, LABEL, visualLength, wordColor, type TemplateProps } from "./shared";
+import { LABEL, lyricShadow, pastel, visualLength, wordColor, type TemplateProps } from "./shared";
 
 /**
  * A lyric tree. Meaningful words ("HEART", "BELONGS", "YOU") form the trunk, joined
@@ -190,7 +190,7 @@ export function Graph({ line, revealed, palette, seed }: TemplateProps) {
     };
   }, [camX, camY, ready, reduce, x, y]);
 
-  const edge = palette.accents[(seed >>> 0) % 3];
+  const edge = pastel(palette.accents[(seed >>> 0) % 3], 0.78);
 
   return (
     <div ref={ref} className="absolute inset-0 overflow-hidden">
@@ -260,14 +260,14 @@ export function Graph({ line, revealed, palette, seed }: TemplateProps) {
               <motion.span
                 key={i}
                 data-fit=""
-                className="glass-glyph absolute origin-bottom-left font-black leading-none tracking-tight whitespace-nowrap"
+                className="absolute origin-bottom-left font-black leading-none tracking-tight whitespace-nowrap"
                 style={{
                   left: n.x + (n.leaf ? 8 : 10),
                   top: n.y + (n.leaf ? 4 : -10),
                   fontSize: n.font,
                   translate: n.leaf ? "0 0" : "0 -100%",
                   color: wordColor(line, i, palette, seed),
-                  ...glassVars(wordColor(line, i, palette, seed)),
+                  textShadow: lyricShadow(wordColor(line, i, palette, seed)),
                 }}
                 initial={{ opacity: 0.18, scale: 0.85, y: 6 }}
                 animate={shown ? { opacity: 1, scale: 1, y: 0 } : { opacity: 0.18, scale: 0.85, y: 6 }}

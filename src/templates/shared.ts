@@ -80,22 +80,18 @@ export function groupRows(words: LyricWord[], maxRows: number): LyricWord[][] {
   return rows;
 }
 
-/** Color for a word: white by default, album accents for emphasis, dim for backing vocals. */
+/**
+ * Premium type color: clean white, with one luminous pastel highlight per line
+ * (a light tint of the album's color), and soft grey for backing vocals.
+ */
 export function wordColor(line: LyricLine, index: number, palette: Palette, rawSeed: number) {
   const seed = rawSeed >>> 0;
   const w = line.words[index];
   if (w.backing) return SECONDARY;
-  const accent = palette.accents[seed % 3];
-  const mode = (seed >>> 4) % 5;
-  // whole line in an album color, the held word in white
-  if (mode === 1) return w.emphasis ? LABEL : accent;
-  // words alternate between white and an accent
-  if (mode === 2) return w.emphasis || index % 2 === 1 ? palette.accents[(seed + 1) % 3] : LABEL;
-  // two accents, row-like rhythm
-  if (mode === 3) return index % 3 === 2 ? LABEL : palette.accents[(seed + (index % 2)) % 3];
+  const accent = pastel(palette.accents[seed % 3]);
   if (w.emphasis) return accent;
   // if nothing is emphasized, color the longest-held word of longer lines
-  if (!line.words.some((x) => x.emphasis) && line.words.length >= 4) {
+  if (!line.words.some((x) => x.emphasis) && line.words.length >= 3) {
     let best = 0;
     line.words.forEach((x, i) => {
       if (x.end - x.start > line.words[best].end - line.words[best].start) best = i;
@@ -138,13 +134,24 @@ export function parseColor(c: string): RGBA {
   return [245, 245, 247, 1];
 }
 
-const rgba = ([r, g, b]: number[], a: number) => `rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, ${a.toFixed(3)})`;
-const towardWhite = ([r, g, b]: number[], t: number) => [r + (255 - r) * t, g + (255 - g) * t, b + (255 - b) * t];
+/** A light, luminous tint of a color (keeps its hue, softens saturation). */
+export function pastel(color: string, lightness = 0.84): string {
+  const [r, g, b] = parseColor(color).map((v) => v / 255);
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const d = max - min;
+  let h = 0;
+  if (d) h = max === r ? ((g - b) / d + (g < b ? 6 : 0)) * 60 : max === g ? ((b - r) / d + 2) * 60 : ((r - g) / d + 4) * 60;
+  const l = (max + min) / 2;
+  const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+  const [nr, ng, nb] = hslToRgb(h, Math.min(0.85, Math.max(0.45, s)), lightness);
+  return `rgb(${Math.round(nr)}, ${Math.round(ng)}, ${Math.round(nb)})`;
+}
 
-/** CSS variables that turn a word into tinted Liquid Glass (used by .glass-glyph). */
-export function glassVars(color: string | undefined): React.CSSProperties {
-  const [r, g, b, a] = parseColor(color ?? LABEL);
-  const c = [r, g, b];
-  const fill = `linear-gradient(176deg, ${rgba(towardWhite(c, 0.78), a)} 0%, ${rgba(c, 0.96 * a)} 34%, ${rgba(c, 0.64 * a)} 58%, ${rgba(c, 0.78 * a)} 82%, ${rgba(towardWhite(c, 0.55), a)} 100%)`;
-  return { ["--glass-fill" as string]: fill };
+/** Depth shadow for every word, plus a soft glow in the word's own tint when it's highlighted. */
+export function lyricShadow(color?: string): string {
+  const depth = "0 0.03em 0.18em rgba(0, 0, 0, 0.34)";
+  if (!color || color === LABEL || color === SECONDARY) return depth;
+  const [r, g, b] = parseColor(color);
+  return `${depth}, 0 0 0.55em rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, 0.42)`;
 }

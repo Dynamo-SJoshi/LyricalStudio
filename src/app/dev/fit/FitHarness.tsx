@@ -6,7 +6,6 @@ import type { LyricLine, LyricsResult, Track } from "@/lib/types";
 import { buildLines, buildUnsyncedLines, parseLrc } from "@/lib/lyrics/parse";
 import { fallbackPalette } from "@/lib/theme/palette";
 import { TEMPLATES, type Scene, type TemplateId } from "@/templates";
-import { GooeyDefs } from "@/templates/kinetic";
 import { langAttr } from "@/templates/shared";
 import { LineText } from "@/components/stage/LyricsStage";
 
@@ -23,10 +22,11 @@ const DEFAULT_SONGS = [
   "arijit singh kesariya",
 ];
 
-/** Stage sizes: 1440x900 and 1280x720 windows. */
+/** Stage sizes: 1440x900, 1280x720 and a wide 2200x950 window. */
 const SIZES = [
   { w: 1144, h: 704 },
   { w: 984, h: 524 },
+  { w: 1900, h: 760 },
 ];
 
 type Failure = { song: string; template: string; size: string; line: string; word: string; overflow: number; side: string };
@@ -39,7 +39,7 @@ declare global {
 }
 
 const TEMPLATE_IDS = Object.keys(TEMPLATES) as TemplateId[];
-const SINGLE_WORD: TemplateId[] = ["burst", "morph"];
+const SINGLE_WORD: TemplateId[] = ["burst"];
 
 async function loadSong(q: string): Promise<{ name: string; lines: LyricLine[] } | null> {
   const search = (await (await fetch(`/api/search?q=${encodeURIComponent(q)}`)).json()) as { tracks?: Track[] };
@@ -66,8 +66,12 @@ export function FitHarness() {
   useEffect(() => {
     let cancelled = false;
     const run = async () => {
-      const qs = new URLSearchParams(window.location.search).get("songs");
+      const params = new URLSearchParams(window.location.search);
+      const qs = params.get("songs");
       const queries = qs ? qs.split("|") : DEFAULT_SONGS;
+      // optional filters: ?templates=slide,zoom&sizes=1144x704
+      const onlyTemplates = params.get("templates")?.split(",");
+      const onlySizes = params.get("sizes")?.split(",");
       const failures: Failure[] = [];
       const songs: string[] = [];
       let checked = 0;
@@ -75,8 +79,8 @@ export function FitHarness() {
         const song = await loadSong(q).catch(() => null);
         if (!song || cancelled) continue;
         songs.push(`${song.name} (${song.lines.length} lines)`);
-        for (const template of TEMPLATE_IDS) {
-          for (const size of SIZES) {
+        for (const template of TEMPLATE_IDS.filter((t) => !onlyTemplates || onlyTemplates.includes(t))) {
+          for (const size of SIZES.filter((z) => !onlySizes || onlySizes.includes(`${z.w}x${z.h}`))) {
             await new Promise<void>((resolve) => {
               resolveRef.current = resolve;
               setBatch({ song: song.name, lines: song.lines, template, size });
@@ -166,7 +170,6 @@ export function FitHarness() {
 
   return (
     <MotionConfig reducedMotion="always">
-      <GooeyDefs />
       <main className="min-h-screen bg-neutral-900 p-4 text-sm text-white">
         <p className="mb-2 font-mono">
           {report.done ? "DONE" : "RUNNING"} · checked {report.checked} · failures {report.failures.length} · {report.progress}
@@ -174,16 +177,17 @@ export function FitHarness() {
         <div ref={gridRef} className="flex flex-wrap gap-2">
           {batch &&
             cases.map((c, i) => {
-              const tilt = batch.template === "vertical" || batch.template === "graph" ? 0 : i % 2 ? 3.5 : -3.5;
+              const tilt = batch.template === "graph" ? 0 : i % 2 ? 3.5 : -3.5;
               const scene: Scene = { template: batch.template, tilt };
               return (
                 <div
-                  key={c.key}
+                  // fresh mount per batch, exactly like a new lyric line in the app
+                  key={`${batch.template}-${batch.size.w}-${batch.song}-${c.key}`}
                   data-case={c.line.text}
                   className="relative bg-black outline outline-1 outline-white/20"
                   style={{ width: batch.size.w, height: batch.size.h, containerType: "size" }}
                 >
-                  <div lang={langAttr(c.line.lang)} className="lyric-pop absolute inset-0 uppercase">
+                  <div lang={langAttr(c.line.lang)} className="absolute inset-0 uppercase">
                     <LineText line={c.line} scene={scene} revealed={c.revealed} palette={palette} seed={i * 7919} />
                   </div>
                 </div>

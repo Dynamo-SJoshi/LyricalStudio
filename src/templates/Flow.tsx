@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import { fitFontLen, glassVars, LABEL, visualLength, wordColor, type TemplateProps } from "./shared";
+import { fitFontLen, LABEL, lyricShadow, visualLength, wordColor, type TemplateProps } from "./shared";
 
 /** The whole line is visible but dim; words light up as they're sung. For fast or long lines. */
 export function Flow({ line, revealed, palette, seed }: TemplateProps) {
@@ -25,9 +25,9 @@ export function Flow({ line, revealed, palette, seed }: TemplateProps) {
           <motion.span
             key={i}
             data-fit=""
-            className="glass-glyph inline-block origin-bottom"
-            // glass tint switches to the word's color once it's sung
-            style={glassVars(sung ? color : LABEL)}
+            className="inline-block origin-bottom"
+            // the highlight color appears once the word is sung
+            style={{ color: sung ? color : LABEL, textShadow: lyricShadow(sung ? color : undefined) }}
             animate={{
               opacity: sung ? 1 : 0.22,
               scale: active ? 1.04 : 1,

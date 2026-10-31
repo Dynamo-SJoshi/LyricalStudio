@@ -35,9 +35,11 @@ Open-source (MIT) web music player whose main feature is Cotodama-style kinetic 
 - Lyric stage uses CSS container units (cqw/cqh), not vw/vh, so lyrics never run under the YouTube tile.
 - Auth is client-side only (Supabase browser client). Without keys the app runs in guest mode.
 - Load external artwork with referrerPolicy="no-referrer" (googleusercontent blocks some referrers).
+- Background visuals live in one WebGL shader (src/components/stage/AmbientBackground.tsx); don't add DOM shapes, blend modes, backdrop-filters or filters behind/over the lyrics. Words get cheap text-shadows only.
+- Type color: white lyrics, one pastel highlight per line (wordColor/pastel). No saturated text colors.
 - Smoothness: animate only transform/opacity where possible. Never animate CSS blur on big or many elements, and avoid per-frame border-radius/box-shadow changes. Motion blur = ghost trails in KineticWord (src/templates/kinetic.tsx).
 - Per-line seeds must be unsigned: (a ^ b) >>> 0. A negative seed % 3 indexes past the palette.
-- No color-mix() in CSS: the Tailwind/Lightning CSS build "lowers" it to opaque fallbacks. Compute colors in JS (glassVars in src/templates/shared.ts) or use a tint layer with opacity.
+- No color-mix() in CSS: the Tailwind/Lightning CSS build "lowers" it to opaque fallbacks. Compute colors in JS (see pastel/lyricShadow in src/templates/shared.ts).
 - backdrop-filter must be set as an inline style; the CSS build drops the unprefixed property.
 - Lyrics must never be cut off: every word element carries data-fit and sits inside a FitBox (src/templates/FitBox.tsx), which knows the camera's tilt/zoom. After changing any layout, run the fit check: `npm run dev`, open /dev/fit (dev-only page), and expect 0 failures.
 - If CSS changes don't show up in `npm run dev`, restart the dev server; its stylesheet watcher can go stale.

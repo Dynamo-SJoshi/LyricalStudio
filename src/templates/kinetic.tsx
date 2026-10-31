@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { glassVars } from "./shared";
+import { lyricShadow } from "./shared";
 import {
   animate,
   motion,
@@ -26,19 +26,6 @@ import {
 
 /** Critically damped: glides to rest with no bounce. */
 export const glide: Transition = { type: "spring", stiffness: 110, damping: 21, mass: 1 };
-
-/** Mount once: the threshold filter used by the gooey Morph layout. */
-export function GooeyDefs() {
-  return (
-    <svg aria-hidden width="0" height="0" style={{ position: "absolute" }}>
-      <defs>
-        <filter id="gooey-threshold" colorInterpolationFilters="sRGB">
-          <feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 255 -140" />
-        </filter>
-      </defs>
-    </svg>
-  );
-}
 
 export type Pose = {
   /** em */
@@ -67,8 +54,6 @@ type KineticProps = {
   style?: React.CSSProperties;
   /** include in FitBox measurement (Burst measures only the active word) */
   measure?: boolean;
-  /** Liquid Glass glyphs (on by default) */
-  glass?: boolean;
   children: React.ReactNode;
 };
 
@@ -85,7 +70,7 @@ function useGhost(vx: MotionValue<number>, vy: MotionValue<number>, vs: MotionVa
 }
 
 /** A word that glides between a hidden and a shown pose, with ghost-trail motion blur. */
-export function KineticWord({ shown, from, to, transition, className, style, measure = true, glass = true, children }: KineticProps) {
+export function KineticWord({ shown, from, to, transition, className, style, measure = true, children }: KineticProps) {
   const reduce = useReducedMotionConfig() ?? false;
   const hidden = { ...REST, ...from };
   const visible = { ...REST, ...to };
@@ -103,7 +88,7 @@ export function KineticWord({ shown, from, to, transition, className, style, mea
   useEffect(() => {
     const target = shown ? visible : hidden;
     const t = reduce ? { duration: 0 } : (transition ?? glide);
-    const controls = KEYS.map((k) => animate(values[k], target[k], t));
+    const controls = KEYS.filter((k) => hidden[k] !== visible[k] || values[k].get() !== target[k]).map((k) => animate(values[k], target[k], t));
     return () => controls.forEach((c) => c.stop());
     // poses are derived from props each render; re-run only when visibility flips
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -123,15 +108,15 @@ export function KineticWord({ shown, from, to, transition, className, style, mea
     <motion.span
       data-fit={measure ? "" : undefined}
       className={className}
-      style={{ ...positioned, ...(glass ? glassVars(style?.color as string | undefined) : {}), ...style, x: tx, y: ty, scale, scaleX, scaleY, skewX, rotate, opacity, willChange: "transform, opacity" }}
+      style={{ ...positioned, textShadow: lyricShadow(style?.color as string | undefined), ...style, x: tx, y: ty, scale, scaleX, scaleY, skewX, rotate, opacity, willChange: "transform, opacity" }}
     >
-      <motion.span aria-hidden className={`${glass ? "glass-glyph " : ""}pointer-events-none absolute inset-0`} style={g2}>
+      <motion.span aria-hidden className="pointer-events-none absolute inset-0" style={{ ...g2, textShadow: "none" }}>
         {children}
       </motion.span>
-      <motion.span aria-hidden className={`${glass ? "glass-glyph " : ""}pointer-events-none absolute inset-0`} style={g1}>
+      <motion.span aria-hidden className="pointer-events-none absolute inset-0" style={{ ...g1, textShadow: "none" }}>
         {children}
       </motion.span>
-      <span className={glass ? "glass-glyph relative" : "relative"}>{children}</span>
+      <span className="relative">{children}</span>
     </motion.span>
   );
 }

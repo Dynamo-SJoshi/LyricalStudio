@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { getSupabase } from "@/lib/supabase/client";
+import { fallbackPalette } from "@/lib/theme/palette";
+import { AmbientBackground } from "@/components/stage/AmbientBackground";
 
 /** Shown when Supabase is configured and nobody is signed in. */
 export function LoginScreen() {
@@ -35,12 +37,7 @@ export function LoginScreen() {
 
   return (
     <main className="relative flex flex-1 items-center justify-center p-6">
-      <div aria-hidden className="pointer-events-none fixed inset-0 bg-black">
-        <div className="ambient-blob ambient-blob-0" style={{ background: "radial-gradient(circle, var(--system-pink) 0%, transparent 65%)" }} />
-        <div className="ambient-blob ambient-blob-1" style={{ background: "radial-gradient(circle, var(--system-indigo) 0%, transparent 65%)" }} />
-        <div className="ambient-blob ambient-blob-2" style={{ background: "radial-gradient(circle, var(--system-orange) 0%, transparent 65%)" }} />
-        <div className="absolute inset-0 bg-black/40" />
-      </div>
+      <AmbientBackground palette={fallbackPalette(4)} />
 
       <motion.div
         initial={{ opacity: 0, y: 24, scale: 0.97 }}
