@@ -30,8 +30,8 @@ LyricalStudio does not download, host or redistribute any audio. All playback go
 Requires Node.js 20 or later.
 
 ```bash
-git clone https://github.com/<your-username>/LyricalStudio.git
-cd LyricalStudio
+git clone https://github.com/<your-username>/LyricalStudio-Web.git
+cd LyricalStudio-Web
 npm install
 cp .env.example .env.local   # then fill in your Supabase keys
 npm run dev
