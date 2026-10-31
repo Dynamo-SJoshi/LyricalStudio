@@ -10,7 +10,7 @@ import { formatTime } from "@/lib/format";
 
 /** Spotlight-style search field with results, likes and recently played. */
 export function SearchPanel() {
-  const { playQueue, current } = usePlayer();
+  const { playQueue, playRadio, current } = usePlayer();
   const { likes } = useLikes();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -75,6 +75,12 @@ export function SearchPanel() {
     };
   }, [query]);
 
+  const playOne = (track: Track) => {
+    playRadio(track);
+    setOpen(false);
+    inputRef.current?.blur();
+  };
+
   const play = (list: Track[], i: number) => {
     playQueue(list, i);
     setOpen(false);
@@ -96,7 +102,7 @@ export function SearchPanel() {
             setOpen(true);
           }}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && results.length) play(results, 0);
+            if (e.key === "Enter" && results.length) playOne(results[0]);
           }}
           placeholder="Search songs, artists…"
           aria-label="Search songs"
@@ -118,8 +124,9 @@ export function SearchPanel() {
               <Section title={loading ? "Searching…" : "Songs"}>
                 {error && <p className="px-3 py-2 text-sm text-[var(--system-red)]">{error}</p>}
                 {!loading && !error && results.length === 0 && <Empty>No songs found.</Empty>}
-                {results.map((t, i) => (
-                  <Row key={t.videoId} track={t} onClick={() => play(results, i)} active={current?.videoId === t.videoId} />
+                {results.map((t) => (
+                  // a searched song plays with a radio of related songs after it
+                  <Row key={t.videoId} track={t} onClick={() => playOne(t)} active={current?.videoId === t.videoId} />
                 ))}
               </Section>
             ) : (

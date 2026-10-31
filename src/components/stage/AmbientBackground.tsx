@@ -46,22 +46,23 @@ float fbm(vec2 p) {
   return v / 0.88;
 }
 
-// the light behind the glass: broad, slow color fields (Apple Music-like)
+// the light behind the glass: separate pools of colored light on a deep base.
+// Added (not blended) so hues glow side by side instead of averaging into brown.
 vec3 lightField(vec2 p, float t) {
   vec2 s = p * 0.62;
   vec2 q = vec2(fbm(s + vec2(0.0, t * 0.035)), fbm(s + vec2(5.2, -t * 0.03)));
   vec2 r = vec2(fbm(s + 1.6 * q + vec2(1.7, 9.2) + t * 0.022), fbm(s + 1.6 * q + vec2(8.3, 2.8) - t * 0.026));
   float f = fbm(s * 0.9 + 1.4 * r);
-  vec3 col = uBase;
-  col = mix(col, uC0, smoothstep(0.15, 0.75, f) * 0.95);
-  col = mix(col, uC1, smoothstep(0.35, 0.85, r.x) * 0.8);
-  col = mix(col, uC2, smoothstep(0.45, 0.9, q.y) * 0.65);
-  // the cover art from a very blurry mip level: it adds its colors, never its picture
+  float w0 = smoothstep(0.42, 0.82, f);
+  float w1 = smoothstep(0.5, 0.88, r.x) * (1.0 - w0 * 0.6);
+  float w2 = smoothstep(0.55, 0.92, q.y) * (1.0 - max(w0, w1) * 0.6);
+  vec3 col = uBase * 0.7 + uC0 * w0 * 0.95 + uC1 * w1 * 0.8 + uC2 * w2 * 0.65;
+  // a hint of the cover art's colors (very blurry mip, never the picture)
   vec3 art = texture2D(uArt, vec2(0.5) + p * 0.3 + (r - 0.5) * 0.2, 5.0).rgb;
-  col = mix(col, art * 1.2, uArtAmt * 0.22);
-  // a touch more vibrance
+  col += art * uArtAmt * 0.1;
+  // richer color: push saturation
   float lum = dot(col, vec3(0.299, 0.587, 0.114));
-  return mix(vec3(lum), col, 1.25);
+  return max(mix(vec3(lum), col, 1.45), 0.0);
 }
 
 void main() {
@@ -110,14 +111,13 @@ void main() {
   float spec = pow(max(dot(reflect(-L, n), vec3(0.0, 0.0, 1.0)), 0.0), 40.0);
   col += spec * 0.2 + ring * 0.05 + sweep * 0.1;
 
-  // the slab: frosted haze, bright rim, vignette
-  col = mix(col, vec3(1.0), 0.035);
-  col += smoothstep(0.012, 0.0, 1.0 - uv.y) * 0.22 + (smoothstep(0.006, 0.0, uv.x) + smoothstep(0.006, 0.0, 1.0 - uv.x)) * 0.07;
-  col *= mix(0.55, 1.0, smoothstep(1.25, 0.35, length(p * vec2(0.85, 1.1))));
+  // the slab: bright rim, deep vignette
+  col += smoothstep(0.012, 0.0, 1.0 - uv.y) * 0.18 + (smoothstep(0.006, 0.0, uv.x) + smoothstep(0.006, 0.0, 1.0 - uv.x)) * 0.05;
+  col *= mix(0.4, 1.0, smoothstep(1.2, 0.3, length(p * vec2(0.85, 1.1))));
 
-  // dark enough for white type; soft filmic roll-off; grain
-  col *= 0.78;
-  col = col / (1.0 + col * 0.35);
+  // filmic tone: rich darks, highlights roll off softly, never bright enough to fight white type
+  col = col / (1.0 + col * 0.7);
+  col = pow(col, vec3(1.18)) * 0.95;
   col += (hash(gl_FragCoord.xy + fract(t) * 100.0) - 0.5) * 0.018;
   gl_FragColor = vec4(col, 1.0);
 }

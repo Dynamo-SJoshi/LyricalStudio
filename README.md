@@ -13,6 +13,10 @@ Inspired by the [Cotodama Lyric Speaker](https://cotodama-speaker.com/). Not aff
 - Premium type: clean white lyrics with one soft, luminous highlight per line in the album's tint
 - Smooth, cinematic motion: gliding springs, a slow camera push-in, squash-and-stretch word entrances and ghost-trail motion blur
 - Lines always fit on screen, whatever the song, language or window size
+- A home screen with suggestions: Quick picks and playlists from YouTube Music, "Made for you" radio, recently played and liked songs
+- Up next fills itself with related songs, and keeps going when the queue ends
+- Pop-up queue and an enlargeable video from the right-hand icons; full-screen mode (F)
+- Lyrics for recently played songs are kept in the browser, so they still show if the lyrics service is down
 - Press Shift+F for a frame-rate meter
 - English, Japanese (日本語) and Hindi (हिन्दी); romanized lines appear as subtitles
 - Per-song sync nudge if lyrics run early or late
@@ -27,7 +31,9 @@ Inspired by the [Cotodama Lyric Speaker](https://cotodama-speaker.com/). Not aff
 | Space | Play / pause |
 | Left / Right | Back / forward 5 seconds |
 | [ / ] | Lyrics earlier / later by 0.25 s |
-| Esc | Close search |
+| F | Full screen |
+| Shift+F | Frame-rate meter |
+| Esc | Close search, shrink the video |
 
 ## How it works
 

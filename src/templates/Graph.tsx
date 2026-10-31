@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
-import { animate, motion, useMotionValue, useReducedMotionConfig } from "motion/react";
+import { useEffect, useRef } from "react";
+import { motion, useReducedMotionConfig } from "motion/react";
+import { animateTo, resolveTiming } from "./waapi";
 import { useElementSize } from "@/lib/useElementSize";
 import type { LyricWord } from "@/lib/types";
-import { LABEL, lyricShadow, pastel, visualLength, wordColor, type TemplateProps } from "./shared";
+import { LABEL, lyricShadow, visualLength, vivid, wordColor, type TemplateProps } from "./shared";
 
 /**
  * A lyric tree. Meaningful words ("HEART", "BELONGS", "YOU") form the trunk, joined
@@ -177,25 +178,27 @@ export function Graph({ line, revealed, palette, seed }: TemplateProps) {
     }
   }
 
-  const x = useMotionValue(camX);
-  const y = useMotionValue(camY);
+  // the camera glides on the compositor thread (smooth even while the page is busy)
+  const camRef = useRef<HTMLDivElement>(null);
+  const placed = useRef(false);
   useEffect(() => {
-    if (!ready) return;
-    const t = reduce ? { duration: 0 } : ({ type: "spring", stiffness: 30, damping: 12, mass: 1 } as const);
-    const a = animate(x, camX, t);
-    const b = animate(y, camY, t);
-    return () => {
-      a.stop();
-      b.stop();
-    };
-  }, [camX, camY, ready, reduce, x, y]);
+    const el = camRef.current;
+    if (!ready || !el) return;
+    const transform = `translate(${camX}px, ${camY}px) scale(${s})`;
+    if (!placed.current || reduce) {
+      el.style.transform = transform;
+      placed.current = true;
+      return;
+    }
+    animateTo(el, { transform }, resolveTiming({ type: "spring", stiffness: 30, damping: 12, mass: 1 }));
+  }, [camX, camY, s, ready, reduce]);
 
-  const edge = pastel(palette.accents[(seed >>> 0) % 3], 0.78);
+  const edge = vivid(palette.accents[(seed >>> 0) % 3], 0.66);
 
   return (
     <div ref={ref} className="absolute inset-0 overflow-hidden">
       {ready && (
-        <motion.div className="absolute top-0 left-0" style={{ x, y, scale: s, originX: 0, originY: 0, willChange: "transform" }}>
+        <div ref={camRef} className="absolute top-0 left-0" style={{ transformOrigin: "0 0", willChange: "transform" }}>
           <svg className="absolute top-0 left-0 overflow-visible" width={1} height={1} aria-hidden>
             {nodes.map((n, i) => {
               const shown = i < revealed;
@@ -245,8 +248,8 @@ export function Graph({ line, revealed, palette, seed }: TemplateProps) {
                   cy={n.y}
                   r={r}
                   fill={n.leaf ? LABEL : edge}
-                  initial={{ scale: 0.4, opacity: 0.25 }}
-                  animate={{ scale: shown ? 1 : 0.4, opacity: shown ? 1 : 0.25 }}
+                  initial={{ scale: 0.4, opacity: 0 }}
+                  animate={{ scale: shown ? 1 : 0.4, opacity: shown ? 1 : 0 }}
                   transition={{ type: "spring", stiffness: 400, damping: 18 }}
                 />
               );
@@ -257,10 +260,10 @@ export function Graph({ line, revealed, palette, seed }: TemplateProps) {
             const n = nodes[i];
             const shown = i < revealed;
             return (
-              <motion.span
+              <span
                 key={i}
                 data-fit=""
-                className="absolute origin-bottom-left font-black leading-none tracking-tight whitespace-nowrap"
+                className="absolute origin-bottom-left font-black leading-none tracking-tight whitespace-nowrap transition-[opacity,transform] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
                 style={{
                   left: n.x + (n.leaf ? 8 : 10),
                   top: n.y + (n.leaf ? 4 : -10),
@@ -268,16 +271,15 @@ export function Graph({ line, revealed, palette, seed }: TemplateProps) {
                   translate: n.leaf ? "0 0" : "0 -100%",
                   color: wordColor(line, i, palette, seed),
                   textShadow: lyricShadow(wordColor(line, i, palette, seed)),
+                  opacity: shown ? 1 : 0,
+                  transform: shown ? "translateY(0) scale(1)" : "translateY(6px) scale(0.85)",
                 }}
-                initial={{ opacity: 0.18, scale: 0.85, y: 6 }}
-                animate={shown ? { opacity: 1, scale: 1, y: 0 } : { opacity: 0.18, scale: 0.85, y: 6 }}
-                transition={{ type: "spring", stiffness: 300, damping: 26 }}
               >
                 {w.text}
-              </motion.span>
+              </span>
             );
           })}
-        </motion.div>
+        </div>
       )}
     </div>
   );

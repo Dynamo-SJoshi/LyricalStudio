@@ -14,7 +14,7 @@ export function Stack({ line, revealed, palette, seed }: TemplateProps) {
   return (
     <div className={`flex w-[84cqw] flex-col ${align}`} style={{ fontSize }}>
       {rows.map((row, ri) => (
-        <div key={ri} className="flex flex-wrap gap-x-[0.25em] overflow-hidden leading-[1.05] pb-[0.06em]">
+        <div key={ri} className="flex flex-wrap gap-x-[0.25em] leading-[1.05] pb-[0.06em]">
           {row.map((w) => {
             const i = k++;
             const shown = i < revealed;
@@ -22,7 +22,7 @@ export function Stack({ line, revealed, palette, seed }: TemplateProps) {
               <KineticWord
                 key={i}
                 shown={shown}
-                from={{ y: 1.1, opacity: 0, scaleY: 1.4, scaleX: 0.88 }}
+                from={{ y: 0.7, opacity: 0, scaleY: 1.3, scaleX: 0.9 }}
                 transition={spring}
                 className="inline-block font-black tracking-tight"
                 style={{ color: wordColor(line, i, palette, seed) }}

@@ -8,6 +8,7 @@ export type YTPlayer = {
   getCurrentTime(): number;
   getDuration(): number;
   getPlayerState(): number;
+  getVideoData?(): { video_id?: string; title?: string };
   setVolume(v: number): void;
   getVolume(): number;
   mute(): void;

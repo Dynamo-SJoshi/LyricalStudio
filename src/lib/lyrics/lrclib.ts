@@ -30,19 +30,32 @@ export function cleanArtist(artist: string) {
   return artist.split(/,|&| x | feat\.? | ft\.? /i)[0].trim();
 }
 
+/** Set when LRCLIB itself failed (5xx / network), as opposed to "no lyrics for this song". */
+class UpstreamDown extends Error {}
+
 async function fetchJson<T>(url: string, attempts = 3): Promise<T | null> {
   for (let i = 0; i < attempts; i++) {
     try {
       const res = await fetch(url, { headers: HEADERS, signal: AbortSignal.timeout(8000) });
       if (res.status === 404) return null;
       if (res.ok) return (await res.json()) as T;
-      // 503 "server busy" is common on LRCLIB: back off and retry
+      // 502/503 "server busy" happens on LRCLIB: back off and retry
     } catch {
       // network error or timeout: retry
     }
     await new Promise((r) => setTimeout(r, 400 * (i + 1)));
   }
-  return null;
+  throw new UpstreamDown("LRCLIB unavailable");
+}
+
+/** Like findLyrics, but reports whether the lyrics service was unreachable. */
+export async function findLyricsSafe(opts: Parameters<typeof findLyrics>[0]): Promise<{ lyrics: LyricsResult | null; unavailable: boolean }> {
+  try {
+    return { lyrics: await findLyrics(opts), unavailable: false };
+  } catch (err) {
+    if (err instanceof UpstreamDown) return { lyrics: null, unavailable: true };
+    throw err;
+  }
 }
 
 function toResult(rec: LrclibRecord): LyricsResult | null {
@@ -79,14 +92,26 @@ export async function findLyrics(opts: {
   // 1. Exact lookup (fast, and works even when /search is overloaded)
   const params = new URLSearchParams({ track_name: title, artist_name: artist });
   if (duration) params.set("duration", String(duration));
-  const exact = await fetchJson<LrclibRecord>(`${BASE}/get?${params}`);
+  let exact: LrclibRecord | null = null;
+  let exactDown = false;
+  try {
+    exact = await fetchJson<LrclibRecord>(`${BASE}/get?${params}`);
+  } catch (err) {
+    if (!(err instanceof UpstreamDown)) throw err;
+    exactDown = true; // still try the search endpoint below
+  }
   const exactResult = exact && toResult(exact);
   if (exactResult?.synced || exactResult?.instrumental) return exactResult;
 
   // 2. Fuzzy search; pick the synced result closest in length to our audio
-  const search = await fetchJson<LrclibRecord[]>(
-    `${BASE}/search?${new URLSearchParams({ track_name: title, artist_name: artist })}`,
-  );
+  let search: LrclibRecord[] | null = null;
+  try {
+    search = await fetchJson<LrclibRecord[]>(`${BASE}/search?${new URLSearchParams({ track_name: title, artist_name: artist })}`);
+  } catch (err) {
+    if (exactResult) return exactResult;
+    throw err;
+  }
+  if (exactDown && !search?.length) throw new UpstreamDown("LRCLIB unavailable");
   const candidates = (search ?? [])
     .filter((r) => !duration || Math.abs(r.duration - duration) <= 8)
     .sort((a, b) => {

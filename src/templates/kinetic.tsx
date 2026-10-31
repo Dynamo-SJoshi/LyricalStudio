@@ -1,47 +1,25 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
+import { useReducedMotionConfig } from "motion/react";
 import { lyricShadow } from "./shared";
-import {
-  animate,
-  motion,
-  useMotionValue,
-  useReducedMotionConfig,
-  useTransform,
-  useVelocity,
-  type MotionValue,
-  type Transition,
-} from "motion/react";
+import { animateTo, poseTransform, resolveTiming, REST, type Pose, type Timing } from "./waapi";
 
 /**
- * Smooth, cinematic word motion.
+ * Smooth, cinematic word motion on the compositor thread.
  *
- * Motion blur is done with "ghost trails": two faint copies of the word that lag
- * behind it in proportion to its speed. They only move with transforms and opacity,
- * which the GPU composites for free, unlike blur filters that re-render text every frame.
- *
- * Morphing: words can enter stretched/skewed (scaleX, scaleY, skewX) and settle into
- * their true shape, a squash-and-stretch morph.
+ * - Movement: Web Animations (transform + opacity only), so a busy main thread can't
+ *   make words stutter while they slide into place.
+ * - Motion blur: two faint copies follow the same path a few milliseconds behind,
+ *   visible only while the word is moving.
+ * - Morphing: words can enter stretched/skewed (scaleX, scaleY, skewX) and settle into
+ *   their true shape, a squash-and-stretch morph.
  */
 
+export type { Pose };
+
 /** Critically damped: glides to rest with no bounce. */
-export const glide: Transition = { type: "spring", stiffness: 110, damping: 21, mass: 1 };
-
-export type Pose = {
-  /** em */
-  x?: number;
-  /** em */
-  y?: number;
-  scale?: number;
-  scaleX?: number;
-  scaleY?: number;
-  skewX?: number;
-  opacity?: number;
-  rotate?: number;
-};
-
-const REST: Required<Pose> = { x: 0, y: 0, scale: 1, scaleX: 1, scaleY: 1, skewX: 0, opacity: 1, rotate: 0 };
-const KEYS = Object.keys(REST) as (keyof Pose)[];
+export const glide: Timing = { type: "spring", stiffness: 110, damping: 21, mass: 1 };
 
 type KineticProps = {
   shown: boolean;
@@ -49,7 +27,7 @@ type KineticProps = {
   from: Pose;
   /** pose while shown (defaults to rest) */
   to?: Pose;
-  transition?: Transition;
+  transition?: Timing;
   className?: string;
   style?: React.CSSProperties;
   /** include in FitBox measurement (Burst measures only the active word) */
@@ -57,66 +35,120 @@ type KineticProps = {
   children: React.ReactNode;
 };
 
-function useGhost(vx: MotionValue<number>, vy: MotionValue<number>, vs: MotionValue<number>, lag: number, strength: number, off: boolean) {
-  const x = useTransform(vx, (v) => `${-v * lag}em`);
-  const y = useTransform(vy, (v) => `${-v * lag}em`);
-  const scale = useTransform(vs, (v) => 1 - v * lag * 0.8);
-  const opacity = useTransform(() => {
-    if (off) return 0;
-    const speed = Math.hypot(vx.get(), vy.get()) + Math.abs(vs.get()) * 4;
-    return Math.min(0.34, speed / 70) * strength;
-  });
-  return { x, y, scale, opacity };
-}
+const GHOSTS = [
+  { delay: 22, peak: 0.3 },
+  { delay: 46, peak: 0.16 },
+];
 
-/** A word that glides between a hidden and a shown pose, with ghost-trail motion blur. */
+/** A word that glides between a hidden and a shown pose, with trailing motion blur. */
 export function KineticWord({ shown, from, to, transition, className, style, measure = true, children }: KineticProps) {
   const reduce = useReducedMotionConfig() ?? false;
+  const mainRef = useRef<HTMLSpanElement>(null);
+  const ghostA = useRef<HTMLSpanElement>(null);
+  const ghostB = useRef<HTMLSpanElement>(null);
   const hidden = { ...REST, ...from };
   const visible = { ...REST, ...to };
+  const mounted = useRef(false);
 
-  const x = useMotionValue(hidden.x);
-  const y = useMotionValue(hidden.y);
-  const scale = useMotionValue(hidden.scale);
-  const scaleX = useMotionValue(hidden.scaleX);
-  const scaleY = useMotionValue(hidden.scaleY);
-  const skewX = useMotionValue(hidden.skewX);
-  const opacity = useMotionValue(hidden.opacity);
-  const rotate = useMotionValue(hidden.rotate);
-  const values: Record<keyof Pose, MotionValue<number>> = { x, y, scale, scaleX, scaleY, skewX, opacity, rotate };
+  // start in the hidden pose (set imperatively so React re-renders never fight the animation)
+  useLayoutEffect(() => {
+    const el = mainRef.current;
+    if (!el) return;
+    el.style.transform = poseTransform(hidden);
+    el.style.opacity = String(hidden.opacity);
+    for (const g of [ghostA.current, ghostB.current]) if (g) g.style.opacity = "0";
+    // mount only
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
+    const el = mainRef.current;
+    if (!el) return;
+    const first = !mounted.current;
+    mounted.current = true;
+    // already sitting in the hidden pose: nothing to do (most words of a line start here)
+    if (first && !shown) return;
     const target = shown ? visible : hidden;
-    const t = reduce ? { duration: 0 } : (transition ?? glide);
-    const controls = KEYS.filter((k) => hidden[k] !== visible[k] || values[k].get() !== target[k]).map((k) => animate(values[k], target[k], t));
-    return () => controls.forEach((c) => c.stop());
+    const transform = poseTransform(target);
+    const timing = reduce ? { easing: "linear", duration: 0, delay: 0 } : resolveTiming(transition ?? glide);
+    if (reduce) {
+      animateTo(el, { transform, opacity: target.opacity }, timing);
+      return;
+    }
+    const start = getComputedStyle(el).transform;
+    animateTo(el, { transform, opacity: target.opacity }, timing);
+    // the trail: same path, slightly later, only visible mid-flight
+    [ghostA.current, ghostB.current].forEach((ghost, i) => {
+      if (!ghost) return;
+      // start the trail from where the word is right now
+      ghost.getAnimations().forEach((a) => a.cancel());
+      ghost.style.transform = start === "none" ? transform : start;
+      animateTo(ghost, { transform, opacity: 0 }, { ...timing, delay: timing.delay + GHOSTS[i].delay }, [{ offset: 0.12, value: GHOSTS[i].peak }]);
+    });
     // poses are derived from props each render; re-run only when visibility flips
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shown, reduce]);
 
-  const vx = useVelocity(x);
-  const vy = useVelocity(y);
-  const vs = useVelocity(scale);
-  const g1 = useGhost(vx, vy, vs, 0.022, 1, reduce);
-  const g2 = useGhost(vx, vy, vs, 0.045, 0.55, reduce);
-
-  const tx = useTransform(x, (v) => `${v}em`);
-  const ty = useTransform(y, (v) => `${v}em`);
   const positioned = className?.includes("absolute") ? {} : { position: "relative" as const };
 
   return (
-    <motion.span
+    <span
       data-fit={measure ? "" : undefined}
       className={className}
-      style={{ ...positioned, textShadow: lyricShadow(style?.color as string | undefined), ...style, x: tx, y: ty, scale, scaleX, scaleY, skewX, rotate, opacity, willChange: "transform, opacity" }}
+      style={{ ...positioned, textShadow: lyricShadow(style?.color as string | undefined), ...style }}
     >
-      <motion.span aria-hidden className="pointer-events-none absolute inset-0" style={{ ...g2, textShadow: "none" }}>
+      <span ref={ghostB} aria-hidden className="pointer-events-none absolute inset-0" style={{ textShadow: "none" }}>
         {children}
-      </motion.span>
-      <motion.span aria-hidden className="pointer-events-none absolute inset-0" style={{ ...g1, textShadow: "none" }}>
+      </span>
+      <span ref={ghostA} aria-hidden className="pointer-events-none absolute inset-0" style={{ textShadow: "none" }}>
         {children}
-      </motion.span>
-      <span className="relative">{children}</span>
-    </motion.span>
+      </span>
+      <span ref={mainRef} className="relative inline-block">
+        {children}
+      </span>
+    </span>
+  );
+}
+
+/** Minimal compositor-animated span (no trail, not measured), e.g. single letters. */
+export function KineticSpan({
+  shown,
+  from,
+  transition,
+  className,
+  children,
+}: {
+  shown: boolean;
+  from: Pose;
+  transition?: Timing;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const reduce = useReducedMotionConfig() ?? false;
+  const ref = useRef<HTMLSpanElement>(null);
+  const mounted = useRef(false);
+  const hidden = { ...REST, ...from };
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.transform = poseTransform(hidden);
+    el.style.opacity = String(hidden.opacity);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const first = !mounted.current;
+    mounted.current = true;
+    if (first && !shown) return;
+    const target = shown ? REST : hidden;
+    const timing = reduce ? { easing: "linear", duration: 0, delay: 0 } : resolveTiming(transition ?? glide);
+    animateTo(el, { transform: poseTransform(target), opacity: target.opacity }, timing);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shown, reduce]);
+  return (
+    <span ref={ref} className={`inline-block ${className ?? ""}`}>
+      {children}
+    </span>
   );
 }

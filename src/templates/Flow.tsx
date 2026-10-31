@@ -22,20 +22,20 @@ export function Flow({ line, revealed, palette, seed }: TemplateProps) {
         const active = i === revealed - 1;
         const color = wordColor(line, i, palette, seed);
         return (
-          <motion.span
+          <span
             key={i}
             data-fit=""
-            className="inline-block origin-bottom"
+            className="inline-block origin-bottom transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
             // the highlight color appears once the word is sung
-            style={{ color: sung ? color : LABEL, textShadow: lyricShadow(sung ? color : undefined) }}
-            animate={{
-              opacity: sung ? 1 : 0.22,
-              scale: active ? 1.04 : 1,
+            style={{
+              color: sung ? color : LABEL,
+              textShadow: lyricShadow(sung ? color : undefined),
+              opacity: sung ? 1 : 0.32,
+              transform: active ? "scale(1.04)" : "scale(1)",
             }}
-            transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
           >
             {w.text}
-          </motion.span>
+          </span>
         );
       })}
     </motion.p>

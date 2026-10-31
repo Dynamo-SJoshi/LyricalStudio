@@ -10,7 +10,8 @@ export type TemplateProps = {
   seed: number;
 };
 
-export const LABEL = "#f5f5f7";
+/** Lyrics are pure white: maximum contrast on the deep glass background. */
+export const LABEL = "#ffffff";
 export const SECONDARY = "rgba(235, 235, 245, 0.55)";
 
 /** Apple-like spring: quick, no wobble. */
@@ -81,14 +82,14 @@ export function groupRows(words: LyricWord[], maxRows: number): LyricWord[][] {
 }
 
 /**
- * Premium type color: clean white, with one luminous pastel highlight per line
- * (a light tint of the album's color), and soft grey for backing vocals.
+ * Premium type color: pure white, with one vivid, luminous highlight per line in the
+ * album's hue (saturated, not pastel), and soft grey for backing vocals.
  */
 export function wordColor(line: LyricLine, index: number, palette: Palette, rawSeed: number) {
   const seed = rawSeed >>> 0;
   const w = line.words[index];
   if (w.backing) return SECONDARY;
-  const accent = pastel(palette.accents[seed % 3]);
+  const accent = vivid(palette.accents[seed % 3]);
   if (w.emphasis) return accent;
   // if nothing is emphasized, color the longest-held word of longer lines
   if (!line.words.some((x) => x.emphasis) && line.words.length >= 3) {
@@ -135,7 +136,7 @@ export function parseColor(c: string): RGBA {
 }
 
 /** A light, luminous tint of a color (keeps its hue, softens saturation). */
-export function pastel(color: string, lightness = 0.84): string {
+export function pastel(color: string, lightness = 0.84, saturation?: number): string {
   const [r, g, b] = parseColor(color).map((v) => v / 255);
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
@@ -144,14 +145,19 @@ export function pastel(color: string, lightness = 0.84): string {
   if (d) h = max === r ? ((g - b) / d + (g < b ? 6 : 0)) * 60 : max === g ? ((b - r) / d + 2) * 60 : ((r - g) / d + 4) * 60;
   const l = (max + min) / 2;
   const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
-  const [nr, ng, nb] = hslToRgb(h, Math.min(0.85, Math.max(0.45, s)), lightness);
+  const [nr, ng, nb] = hslToRgb(h, saturation ?? Math.min(0.85, Math.max(0.45, s)), lightness);
   return `rgb(${Math.round(nr)}, ${Math.round(ng)}, ${Math.round(nb)})`;
 }
 
-/** Depth shadow for every word, plus a soft glow in the word's own tint when it's highlighted. */
+/** A vivid, luminous version of a color: same hue, rich saturation, bright enough to read on dark glass. */
+export function vivid(color: string, lightness = 0.7): string {
+  return pastel(color, lightness, 0.95);
+}
+
+/** Depth shadow for every word, plus a glow in the word's own color when it's highlighted. */
 export function lyricShadow(color?: string): string {
-  const depth = "0 0.03em 0.18em rgba(0, 0, 0, 0.34)";
+  const depth = "0 0.035em 0.22em rgba(0, 0, 0, 0.5)";
   if (!color || color === LABEL || color === SECONDARY) return depth;
   const [r, g, b] = parseColor(color);
-  return `${depth}, 0 0 0.55em rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, 0.42)`;
+  return `${depth}, 0 0 0.6em rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, 0.5)`;
 }

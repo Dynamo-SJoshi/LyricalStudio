@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotionConfig } from "motion/react";
+import { springTiming } from "@/templates/waapi";
 import type { LyricLine, Track } from "@/lib/types";
 import type { Palette } from "@/lib/theme/palette";
 import { hashString } from "@/lib/theme/palette";
@@ -9,7 +10,7 @@ import { detectLang, lineAt } from "@/lib/lyrics/parse";
 import type { LyricsStatus } from "@/lib/lyrics/useTrackData";
 import { chooseScene, TEMPLATES, type Scene, type TemplateChoice } from "@/templates";
 import { FitBox } from "@/templates/FitBox";
-import { fitFont, langAttr, pastel, rng } from "@/templates/shared";
+import { langAttr, vivid } from "@/templates/shared";
 import { TitleCard } from "./TitleCard";
 
 /** How far the camera pushes in over a line (FitBox accounts for it). */
@@ -98,7 +99,9 @@ export function LyricsStage({ track, lines, status, palette, seed, genre, offset
       ? "Finding lyrics…"
       : status === "instrumental"
         ? "Instrumental"
-        : status === "none"
+        : status === "unavailable"
+          ? "The lyrics service is busy right now. Retrying…"
+          : status === "none"
           ? "No lyrics found for this song"
           : status === "unsynced"
             ? "Lyrics aren't time-synced for this song, so timing is approximate"
@@ -115,7 +118,7 @@ export function LyricsStage({ track, lines, status, palette, seed, genre, offset
     );
   } else if (pos.mode === "gap") {
     key = `gap-${pos.line}`;
-    content = <Interlude color={pastel(palette.accents[pos.line % 3])} />;
+    content = <Interlude color={vivid(palette.accents[pos.line % 3])} />;
   } else {
     const line = lines[pos.line];
     const lineSeed = (seed ^ hashString(line.text)) >>> 0;
@@ -139,21 +142,15 @@ export function LyricsStage({ track, lines, status, palette, seed, genre, offset
     );
   }
 
-  // the end of the previous line lingers in color as the new one arrives
-  const echoLine = pos.mode === "line" && pos.line > 0 ? lines[pos.line - 1] : null;
-
   return (
     <div ref={rootRef} className="relative h-full w-full overflow-hidden" aria-live="off">
-      <AnimatePresence>
-        {echoLine && <Echo key={`echo-${pos.line}`} line={echoLine} color={pastel(palette.accents[(pos.line + 1) % 3], 0.78)} seed={(seed ^ pos.line) >>> 0} />}
-      </AnimatePresence>
       <AnimatePresence initial={false}>
         <motion.div
           key={key}
           className="absolute inset-0 flex items-center justify-center"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1, transition: { duration: 0.35, ease: [0.25, 0.1, 0.25, 1] } }}
-          exit={{ opacity: 0, scale: 1.02, transition: { duration: 0.45, ease: [0.4, 0, 0.2, 1] } }}
+          exit={{ opacity: 0, transition: { duration: 0.3, ease: [0.4, 0, 0.2, 1] } }}
         >
           {content}
         </motion.div>
@@ -183,50 +180,33 @@ export function LineText({
   seed: number;
 }) {
   const Template = TEMPLATES[scene.template].component;
+  const camRef = useRef<HTMLDivElement>(null);
+  const reduce = useReducedMotionConfig() ?? false;
+  const lineSeconds = Math.max(2, line.end - line.start);
+
+  // camera on the compositor thread: settle into the tilt, then a slow dolly push-in
+  useLayoutEffect(() => {
+    const el = camRef.current;
+    if (!el) return;
+    el.style.rotate = `${scene.tilt}deg`;
+    el.style.scale = String(CAMERA_ZOOM);
+    if (reduce) return;
+    const settle = springTiming(40, 13, 1);
+    const tilt = el.animate([{ rotate: `${scene.tilt * 1.3}deg` }, { rotate: `${scene.tilt}deg` }], { duration: settle.duration, easing: settle.easing, fill: "backwards" });
+    const dolly = el.animate([{ scale: "0.97" }, { scale: String(CAMERA_ZOOM) }], { duration: lineSeconds * 1000, easing: "cubic-bezier(0.25, 0.1, 0.25, 1)", fill: "backwards" });
+    return () => {
+      tilt.cancel();
+      dolly.cancel();
+    };
+  }, [scene.tilt, lineSeconds, reduce]);
+
   return (
-    <motion.div
-      className="absolute inset-0 flex items-center justify-center"
-      style={{ willChange: "transform" }}
-      initial={{ rotate: scene.tilt * 1.3, scale: 0.97 }}
-      animate={{ rotate: scene.tilt, scale: CAMERA_ZOOM }}
-      transition={{
-        rotate: { type: "spring", stiffness: 40, damping: 13 },
-        // a slow, steady push-in, like a camera dolly
-        scale: { duration: Math.max(2, line.end - line.start), ease: [0.25, 0.1, 0.25, 1] },
-      }}
-    >
+    <div ref={camRef} className="absolute inset-0 flex items-center justify-center">
       {/* the graph frames itself (it shrinks to fit, and pans only for very long lines) */}
       <FitBox disabled={scene.template === "graph"} tilt={scene.tilt * 1.3} zoom={CAMERA_ZOOM} insets={line.sub ? { bottom: 0.16 } : undefined}>
         <Template line={line} revealed={revealed} palette={palette} seed={seed} />
       </FitBox>
-    </motion.div>
-  );
-}
-
-function Echo({ line, color, seed }: { line: LyricLine; color: string; seed: number }) {
-  const r = rng(seed);
-  const words = line.words.slice(-2).map((w) => w.text).join(" ");
-  const left = r() < 0.5;
-  // sized to fit, and it drifts upward (not off the side) as it fades
-  const fontSize = fitFont([words], { widthVw: 52, maxVw: 9, heightVh: 16 });
-  return (
-    <motion.p
-      aria-hidden
-      lang={langAttr(line.lang)}
-      className="pointer-events-none absolute font-black whitespace-nowrap uppercase"
-      style={{
-        color,
-        fontSize,
-        [left ? "left" : "right"]: "5cqw",
-        top: `${(r() < 0.5 ? 10 : 68) + r() * 8}cqh`,
-      }}
-      initial={{ opacity: 0.7, y: "0cqh" }}
-      animate={{ opacity: 0, y: "-4cqh" }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 2.2, ease: "easeOut" }}
-    >
-      {words}
-    </motion.p>
+    </div>
   );
 }
 

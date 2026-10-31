@@ -17,6 +17,8 @@ type PlayerContextValue = {
   volume: number;
   error: string | null;
   playQueue: (tracks: Track[], startIndex?: number) => void;
+  /** play a song, then fill "Up next" with related songs (YouTube Music radio) */
+  playRadio: (track: Track) => void;
   next: () => void;
   prev: () => void;
   toggle: () => void;
@@ -51,6 +53,13 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const pendingRef = useRef<string | null>(null);
   const clock = useRef(new PlaybackClock());
   const triedRef = useRef<Set<string>>(new Set());
+  /**
+   * While switching songs, the IFrame player keeps reporting the previous video's
+   * position (and an ad may play first). Until the new song is confirmed playing,
+   * the app shows 0:00 instead of trusting those numbers.
+   */
+  const switchRef = useRef<{ id: string; stale: number; hint?: number; since: number } | null>(null);
+  const watchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stateRef = useRef({ queue, index });
   useEffect(() => {
     stateRef.current = { queue, index };
@@ -64,15 +73,50 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     return p && readyRef.current && typeof p.getCurrentTime === "function" ? p : null;
   }, []);
 
-  const load = useCallback((videoId: string) => {
-    clock.current.reset(0);
-    setDuration(0);
-    setStatus("loading");
-    setError(null);
-    const p = api();
-    if (p) p.loadVideoById(videoId);
-    else pendingRef.current = videoId;
-  }, [api]);
+  const load = useCallback(
+    (videoId: string, durationHint?: number) => {
+      clock.current.reset(0);
+      setDuration(0);
+      setStatus("loading");
+      setError(null);
+      const p = api();
+      switchRef.current = { id: videoId, stale: p ? p.getCurrentTime() || 0 : 0, hint: durationHint, since: performance.now() };
+      if (p) p.loadVideoById(videoId, 0);
+      else pendingRef.current = videoId;
+      // if the new song hasn't started after a few seconds, nudge it
+      if (watchdogRef.current) clearTimeout(watchdogRef.current);
+      watchdogRef.current = setTimeout(() => {
+        const q = api();
+        if (!q || switchRef.current?.id !== videoId) return;
+        const s = q.getPlayerState();
+        if (s === YTState.UNSTARTED || s === YTState.CUED || s === YTState.ENDED) q.playVideo();
+      }, 5000);
+    },
+    [api],
+  );
+
+  /** True once the player is really playing the new song (not the old one, not an ad). */
+  const confirmSwitch = useCallback((p: YTPlayer) => {
+    const sw = switchRef.current;
+    if (!sw) return true;
+    if (p.getPlayerState() !== YTState.PLAYING) return false;
+    const elapsed = performance.now() - sw.since;
+    const d = p.getDuration();
+    const t = p.getCurrentTime() || 0;
+    if (elapsed < 12000) {
+      // still showing the previous video, or still reporting its position
+      const data = p.getVideoData?.();
+      if (data?.video_id && data.video_id !== sw.id) return false;
+      if (sw.stale > 5 && t > 5 && t > sw.stale - 2) return false;
+    }
+    // a very different length means an ad is playing before the song
+    // (after 25 s of playback, trust it anyway: some uploads differ in length)
+    if (sw.hint && d && Math.abs(d - sw.hint) > 8 && elapsed < 25000) return false;
+    switchRef.current = null;
+    clock.current.reset(t);
+    setDuration(d);
+    return true;
+  }, []);
 
   const goTo = useCallback(
     (i: number) => {
@@ -84,11 +128,31 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       triedRef.current = new Set([q[i].videoId]);
       stateRef.current = { queue: q, index: i };
       setIndex(i);
-      load(q[i].videoId);
+      // album uploads have a known length; music videos may not match it
+      load(q[i].videoId, q[i].kind === "song" ? q[i].durationSec : undefined);
       pushRecent(q[i]);
     },
     [load],
   );
+
+  /** Append related songs to the queue (no duplicates). */
+  const extendWithRadio = useCallback(async (seed: Track) => {
+    try {
+      const res = await fetch(`/api/radio?id=${encodeURIComponent(seed.videoId)}`);
+      const { tracks } = (await res.json()) as { tracks?: Track[] };
+      if (!tracks?.length) return false;
+      const { queue: q, index: i } = stateRef.current;
+      const have = new Set(q.map((t) => t.videoId));
+      const extra = tracks.filter((t) => !have.has(t.videoId));
+      if (!extra.length) return false;
+      const nextQueue = [...q, ...extra];
+      stateRef.current = { queue: nextQueue, index: i };
+      setQueue(nextQueue);
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
 
   const playQueue = useCallback(
     (tracks: Track[], startIndex = 0) => {
@@ -99,7 +163,20 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     [goTo],
   );
 
-  const next = useCallback(() => goTo(stateRef.current.index + 1), [goTo]);
+  const playRadio = useCallback(
+    (track: Track) => {
+      playQueue([track], 0);
+      void extendWithRadio(track);
+    },
+    [playQueue, extendWithRadio],
+  );
+
+  // at the end of the queue, keep the music going with related songs
+  const next = useCallback(async () => {
+    const { queue: q, index: i } = stateRef.current;
+    if (i + 1 >= q.length && q[i]) await extendWithRadio(q[i]);
+    goTo(stateRef.current.index + 1);
+  }, [goTo, extendWithRadio]);
   const prev = useCallback(() => {
     const p = api();
     if (p && p.getCurrentTime() > 3) p.seekTo(0, true);
@@ -127,9 +204,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   const getTime = useCallback(() => {
     const p = api();
-    if (!p) return 0;
+    if (!p || !confirmSwitch(p)) return 0;
     return clock.current.sample(p.getCurrentTime() || 0);
-  }, [api]);
+  }, [api, confirmSwitch]);
 
   /** The embed was refused (e.g. label disallows embedding): try another upload of the same song. */
   const tryAlternate = useCallback(async () => {
@@ -156,7 +233,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       const nextQueue = stateRef.current.queue.map((t, k) => (k === i ? patched : t));
       stateRef.current = { queue: nextQueue, index: i };
       setQueue(nextQueue);
-      load(alt.videoId);
+      load(alt.videoId); // music video: its length may differ, so no duration check
     } catch {
       giveUp();
     }
@@ -170,8 +247,13 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     nextRef.current = next;
   }, [tryAlternate, next]);
 
+  // Exactly one player, ever. The host is recorded synchronously: React may attach the
+  // same element twice (dev Strict Mode) before YouTube's script has loaded, which used
+  // to create two players, with the app sometimes controlling the wrong one.
+  const hostRef = useRef<HTMLDivElement | null>(null);
   const attachHost = useCallback((host: HTMLDivElement | null) => {
-    if (!host || playerRef.current) return;
+    if (!host || hostRef.current) return;
+    hostRef.current = host;
     const mount = document.createElement("div");
     host.appendChild(mount);
     loadYouTubeApi()
@@ -191,6 +273,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
           events: {
             onReady: (e) => {
               readyRef.current = true;
+              // development only: lets automated tests inspect the player
+              if (process.env.NODE_ENV !== "production") (window as unknown as { __ytPlayer?: YTPlayer }).__ytPlayer = e.target;
               const saved = Number(localStorage.getItem("ls:volume"));
               const vol = Number.isFinite(saved) && saved > 0 ? saved : 80;
               e.target.setVolume(vol);
@@ -206,7 +290,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
               switch (e.data) {
                 case YTState.PLAYING:
                   setStatus("playing");
-                  setDuration(p.getDuration());
+                  if (!switchRef.current) setDuration(p.getDuration());
                   break;
                 case YTState.PAUSED:
                   setStatus("paused");
@@ -216,7 +300,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
                   break;
                 case YTState.ENDED:
                   setStatus("ended");
-                  nextRef.current();
+                  // advance outside the player's own event (loading inside it can stall)
+                  setTimeout(() => void nextRef.current(), 200);
                   break;
               }
             },
@@ -236,7 +321,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       });
   }, []);
 
-  useEffect(() => () => playerRef.current?.destroy(), []);
+  // The player lives for the whole session (no destroy on unmount: a dev Strict Mode
+  // remount would otherwise leave the app without a player).
 
   // OS media keys / lock screen controls
   useEffect(() => {
@@ -263,6 +349,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       volume,
       error,
       playQueue,
+      playRadio,
       next,
       prev,
       toggle,
@@ -271,7 +358,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       getTime,
       attachHost,
     }),
-    [queue, index, current, status, duration, volume, error, playQueue, next, prev, toggle, seek, setVolume, getTime, attachHost],
+    [queue, index, current, status, duration, volume, error, playQueue, playRadio, next, prev, toggle, seek, setVolume, getTime, attachHost],
   );
 
   return <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>;

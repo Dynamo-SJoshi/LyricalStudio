@@ -32,12 +32,16 @@ Open-source (MIT) web music player whose main feature is Cotodama-style kinetic 
 - supabase/schema.sql — likes table with row level security
 
 ## Conventions
+- Exactly one YouTube player: PlayerProvider.attachHost records the host synchronously (dev Strict Mode attaches twice). After loadVideoById the IFrame API keeps reporting the old video's time (and ads may play): confirmSwitch gates the clock until the new song is really playing.
+- Lyrics: LRCLIB outages return { unavailable: true } with status 503 (never cached); the client retries every 20 s and keeps the last 150 songs' lyrics in localStorage (src/lib/lyrics/cache.ts).
 - Lyric stage uses CSS container units (cqw/cqh), not vw/vh, so lyrics never run under the YouTube tile.
 - Auth is client-side only (Supabase browser client). Without keys the app runs in guest mode.
 - Load external artwork with referrerPolicy="no-referrer" (googleusercontent blocks some referrers).
 - Background visuals live in one WebGL shader (src/components/stage/AmbientBackground.tsx); don't add DOM shapes, blend modes, backdrop-filters or filters behind/over the lyrics. Words get cheap text-shadows only.
-- Type color: white lyrics, one pastel highlight per line (wordColor/pastel). No saturated text colors.
-- Smoothness: animate only transform/opacity where possible. Never animate CSS blur on big or many elements, and avoid per-frame border-radius/box-shadow changes. Motion blur = ghost trails in KineticWord (src/templates/kinetic.tsx).
+- Type color: pure white lyrics, one vivid highlight per line in the album's hue (wordColor/vivid), on a deep, high-contrast background. No residue: previous lines must fully disappear when the next one starts (no echoes, no faint previews).
+- Smoothness: lyric motion runs on the compositor via the Web Animations API (src/templates/waapi.ts: animateTo, springTiming bakes springs into linear() easing). Animate only transform/opacity (or the individual rotate/scale properties). Don't drive lyric motion from JS frame loops (motion values), and never animate CSS blur. Motion blur = delayed trail copies in KineticWord.
+- Don't clip words with overflow-hidden wrappers: it cuts the highlight glow into a visible box.
+- No permanent will-change and no 3D transforms at rest on words (rotateX only while flipping): each forces a GPU layer per word.
 - Per-line seeds must be unsigned: (a ^ b) >>> 0. A negative seed % 3 indexes past the palette.
 - No color-mix() in CSS: the Tailwind/Lightning CSS build "lowers" it to opaque fallbacks. Compute colors in JS (see pastel/lyricShadow in src/templates/shared.ts).
 - backdrop-filter must be set as an inline style; the CSS build drops the unprefixed property.

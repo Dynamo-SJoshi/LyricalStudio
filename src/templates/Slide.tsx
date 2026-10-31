@@ -27,7 +27,8 @@ export function Slide({ line, revealed, palette, seed }: TemplateProps) {
                 <KineticWord
                   key={i}
                   shown={shown}
-                  from={{ x: fromLeft ? -5 : 5, opacity: 0, scaleX: 1.45, scaleY: 0.82, skewX: fromLeft ? -16 : 16 }}
+                  // words reading in from the left only travel a little, so they never sweep across the word before them
+                  from={{ x: fromLeft ? -1.1 : 5, opacity: 0, scaleX: fromLeft ? 1.2 : 1.45, scaleY: 0.85, skewX: fromLeft ? -10 : 16 }}
                   transition={{ type: "spring", stiffness: 120, damping: 22 }}
                   className="inline-block font-black tracking-tight"
                   style={{ color: wordColor(line, i, palette, seed) }}

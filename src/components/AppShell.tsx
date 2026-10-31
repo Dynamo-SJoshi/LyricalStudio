@@ -1,13 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { motion, MotionConfig } from "motion/react";
+import { MotionConfig } from "motion/react";
 import { AuthProvider, useAuth } from "@/components/auth/AuthProvider";
 import { LoginScreen } from "@/components/auth/LoginScreen";
 import { UserMenu } from "@/components/auth/UserMenu";
 import { PlayerProvider, usePlayer } from "@/components/player/PlayerProvider";
 import { ControlBar } from "@/components/player/ControlBar";
-import { UpNext } from "@/components/player/UpNext";
+import { SideRail } from "@/components/player/SideRail";
+import { HomeView } from "@/components/home/HomeView";
+import { FullscreenButton } from "@/components/FullscreenButton";
 import { YouTubeTile } from "@/components/player/YouTubeTile";
 import { SearchPanel } from "@/components/search/SearchPanel";
 import { AmbientBackground } from "@/components/stage/AmbientBackground";
@@ -47,6 +49,13 @@ function Studio() {
   const data = useTrackData(current, duration);
   const [template, setTemplateState] = useState<TemplateChoice>("auto");
   const [offset, setOffsetState] = useState(0);
+  // "home" = suggestions, "lyrics" = the stage; a new song switches to lyrics
+  const [view, setView] = useState<"home" | "lyrics">("home");
+  const [videoBig, setVideoBig] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (current) setView("lyrics");
+  }, [current?.videoId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // restore preferences after mount (localStorage isn't available during prerender)
   useEffect(() => {
@@ -85,6 +94,7 @@ function Studio() {
       else if (e.key === "ArrowLeft") seek(getTime() - 5);
       else if (e.key === "[") setOffset(offset - 0.25);
       else if (e.key === "]") setOffset(offset + 0.25);
+      else if (e.key === "Escape") setVideoBig(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -96,16 +106,31 @@ function Studio() {
       <FpsMeter />
 
       <header className="fixed inset-x-0 top-0 z-30 flex items-center justify-between gap-4 px-6 pt-5">
-        <span className="w-[200px] text-lg font-black tracking-tight">LyricalStudio</span>
+        <div className="flex w-[260px] items-center gap-3">
+          <button onClick={() => setView("home")} className="text-lg font-black tracking-tight" title="Home">
+            LyricalStudio
+          </button>
+          {current && (
+            <button
+              onClick={() => setView(view === "home" ? "lyrics" : "home")}
+              className="glass rounded-full px-3 py-1.5 text-[12px] font-medium transition hover:bg-white/15"
+            >
+              {view === "home" ? "Now playing" : "Home"}
+            </button>
+          )}
+        </div>
         <SearchPanel />
-        <div className="flex w-[200px] justify-end">
+        <div className="flex w-[260px] items-center justify-end gap-2">
           <UserMenu />
+          <FullscreenButton />
         </div>
       </header>
 
       {/* lyrics stage: sized with container units so lyrics never run under the video tile */}
-      <main className="fixed top-[76px] bottom-[120px] left-6 right-[272px] z-10" style={{ containerType: "size" }}>
-        {current ? (
+      <main className="fixed top-[76px] bottom-[120px] left-6 right-[248px] z-10" style={{ containerType: "size" }}>
+        {view === "home" || !current ? (
+          <HomeView />
+        ) : (
           <LyricsStage
             track={current}
             lines={data.lines}
@@ -117,48 +142,17 @@ function Studio() {
             template={template}
             getTime={getTime}
           />
-        ) : (
-          <Welcome />
         )}
       </main>
 
-      <aside className="fixed top-[76px] right-6 bottom-[120px] z-20 flex w-[224px] flex-col gap-4">
-        <UpNext />
-        <YouTubeTile />
+      <aside className="fixed top-[76px] right-6 z-30 w-[200px]">
+        <SideRail videoBig={videoBig} onToggleVideo={() => setVideoBig((v) => !v)} />
       </aside>
+      <YouTubeTile big={videoBig} onShrink={() => setVideoBig(false)} />
 
       <footer className="fixed inset-x-6 bottom-5 z-30">
         <ControlBar offset={offset} onOffset={setOffset} template={template} onTemplate={setTemplate} />
       </footer>
     </>
-  );
-}
-
-function Welcome() {
-  const words = ["Lyrics,", "in", "motion."];
-  return (
-    <div className="flex h-full flex-col items-center justify-center text-center">
-      <h1 className="flex flex-wrap justify-center gap-x-[0.25em] text-[min(11cqw,22cqh)] leading-none font-black tracking-tighter">
-        {words.map((w, i) => (
-          <motion.span
-            key={w}
-            initial={{ y: 60, opacity: 0, filter: "blur(16px)" }}
-            animate={{ y: 0, opacity: 1, filter: "blur(0px)" }}
-            transition={{ delay: 0.15 + i * 0.25, type: "spring", stiffness: 160, damping: 22 }}
-            style={{ color: i === 2 ? "var(--system-pink)" : undefined }}
-          >
-            {w}
-          </motion.span>
-        ))}
-      </h1>
-      <motion.p
-        className="mt-6 text-lg text-secondary"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1 }}
-      >
-        Search for a song to begin. Press <kbd className="rounded border border-white/20 px-1">Ctrl K</kbd> anytime.
-      </motion.p>
-    </div>
   );
 }

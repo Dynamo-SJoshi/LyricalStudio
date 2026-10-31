@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { MotionConfig } from "motion/react";
 import type { LyricLine, LyricsResult, Track } from "@/lib/types";
 import { buildLines, buildUnsyncedLines, parseLrc } from "@/lib/lyrics/parse";
+import { readCachedLyrics } from "@/lib/lyrics/cache";
 import { fallbackPalette } from "@/lib/theme/palette";
 import { TEMPLATES, type Scene, type TemplateId } from "@/templates";
 import { langAttr } from "@/templates/shared";
@@ -47,7 +48,10 @@ async function loadSong(q: string): Promise<{ name: string; lines: LyricLine[] }
   if (!t) return null;
   const params = new URLSearchParams({ title: t.title, artist: t.artist });
   if (t.durationSec) params.set("duration", String(t.durationSec));
-  const { lyrics } = (await (await fetch(`/api/lyrics?${params}`)).json()) as { lyrics: LyricsResult | null };
+  // same local cache the app uses, so the check still runs when LRCLIB is down
+  const lyrics =
+    readCachedLyrics(`${t.artist}|${t.title}`.toLowerCase()) ??
+    ((await (await fetch(`/api/lyrics?${params}`)).json()) as { lyrics: LyricsResult | null }).lyrics;
   if (!lyrics?.raw) return null;
   const duration = t.durationSec ?? 240;
   const lines = lyrics.synced ? buildLines(parseLrc(lyrics.raw), duration) : buildUnsyncedLines(lyrics.raw, duration);
@@ -163,7 +167,10 @@ export function FitHarness() {
   if (batch) {
     batch.lines.forEach((line, li) => {
       if (SINGLE_WORD.includes(batch.template)) {
-        line.words.forEach((_, wi) => cases.push({ line, revealed: wi + 1, key: `${li}-${wi}` }));
+        // one word at a time: the longest word is the worst case for fitting
+        let wi = 0;
+        line.words.forEach((w, i) => w.text.length > line.words[wi].text.length && (wi = i));
+        cases.push({ line, revealed: wi + 1, key: `${li}-${wi}` });
       } else cases.push({ line, revealed: line.words.length, key: `${li}` });
     });
   }

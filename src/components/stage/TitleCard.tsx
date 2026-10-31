@@ -3,7 +3,7 @@
 import { motion } from "motion/react";
 import type { Track } from "@/lib/types";
 import type { Palette } from "@/lib/theme/palette";
-import { fitFont, LABEL, lyricShadow, pastel } from "@/templates/shared";
+import { fitFont, LABEL, lyricShadow, vivid } from "@/templates/shared";
 
 /** Song title card: shown before the first lyric, at the end, and when there are no lyrics. */
 export function TitleCard({
@@ -28,7 +28,7 @@ export function TitleCard({
       <motion.h2
         data-fit=""
         className="font-black leading-[1.02] tracking-tighter"
-        style={{ fontSize, color: LABEL, textShadow: lyricShadow(pastel(palette.accents[0])) }}
+        style={{ fontSize, color: LABEL, textShadow: lyricShadow(vivid(palette.accents[0])) }}
         initial={{ y: 40, opacity: 0, filter: "blur(16px)" }}
         animate={{ y: 0, opacity: 1, filter: "blur(0px)" }}
         transition={{ type: "spring", stiffness: 140, damping: 22 }}

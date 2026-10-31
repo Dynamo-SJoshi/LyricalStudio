@@ -4,13 +4,16 @@ import { useEffect, useMemo, useState } from "react";
 import type { LyricLine, LyricsResult, Track, TrackMeta } from "@/lib/types";
 import { buildLines, buildUnsyncedLines, parseLrc } from "@/lib/lyrics/parse";
 import { extractPalette, fallbackPalette, hashString, type Palette } from "@/lib/theme/palette";
+import { readCachedLyrics, writeCachedLyrics } from "@/lib/lyrics/cache";
 
-export type LyricsStatus = "idle" | "loading" | "synced" | "unsynced" | "instrumental" | "none";
+export type LyricsStatus = "idle" | "loading" | "synced" | "unsynced" | "instrumental" | "none" | "unavailable";
 
 type Loaded = {
   key: string;
   lyrics: LyricsResult | null;
   meta: TrackMeta;
+  /** the lyrics service was unreachable (not the same as "this song has no lyrics") */
+  unavailable?: boolean;
 };
 
 const cache = new Map<string, Promise<Loaded>>();
@@ -24,18 +27,24 @@ function load(track: Track): Promise<Loaded> {
     const q = new URLSearchParams({ title: track.title, artist: track.artist });
     if (track.album) q.set("album", track.album);
     if (track.durationSec) q.set("duration", String(track.durationSec));
+    const cached = readCachedLyrics(key);
     p = Promise.all([
-      fetch(`/api/lyrics?${q}`)
-        .then((r) => r.json())
-        .then((d: { lyrics?: LyricsResult | null }) => d.lyrics ?? null)
-        .catch(() => null),
+      cached
+        ? Promise.resolve({ lyrics: cached, unavailable: false })
+        : fetch(`/api/lyrics?${q}`)
+            .then((r) => r.json())
+            .then((d: { lyrics?: LyricsResult | null; unavailable?: boolean }) => {
+              if (d.lyrics) writeCachedLyrics(key, d.lyrics);
+              return { lyrics: d.lyrics ?? null, unavailable: !!d.unavailable };
+            })
+            .catch(() => ({ lyrics: null, unavailable: true })),
       fetch(`/api/meta?${q}`)
         .then((r) => r.json())
         .then((d: { meta?: TrackMeta }) => d.meta ?? {})
         .catch(() => ({})),
-    ]).then(([lyrics, meta]) => ({ key, lyrics, meta }));
-    // don't cache failures forever
-    p.then((v) => !v.lyrics && setTimeout(() => cache.delete(key), 60_000));
+    ]).then(([l, meta]) => ({ key, lyrics: l.lyrics, unavailable: l.unavailable, meta }));
+    // don't cache failures: outages are retried soon, "not found" after a minute
+    p.then((v) => !v.lyrics && setTimeout(() => cache.delete(key), v.unavailable ? 0 : 60_000));
     cache.set(key, p);
   }
   return p;
@@ -47,6 +56,13 @@ export function useTrackData(track: Track | null, playerDuration: number) {
 
   const key = track ? songKey(track) : "";
   const seed = useMemo(() => hashString(key), [key]);
+  // when the lyrics service is down, try again every 20 s while this song plays
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    if (!loaded?.unavailable || loaded.key !== key) return;
+    const id = setTimeout(() => setAttempt((a) => a + 1), 20_000);
+    return () => clearTimeout(id);
+  }, [loaded, key]);
 
   useEffect(() => {
     if (!track) return;
@@ -67,7 +83,7 @@ export function useTrackData(track: Track | null, playerDuration: number) {
     };
     // key captures the identity of the song; track object may be re-created
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
+  }, [key, attempt]);
 
   const current = loaded && loaded.key === key ? loaded : null;
   const duration = track?.durationSec || playerDuration || 240;
@@ -76,7 +92,7 @@ export function useTrackData(track: Track | null, playerDuration: number) {
     if (!track) return { lines: [], status: "idle" };
     if (!current) return { lines: [], status: "loading" };
     const l = current.lyrics;
-    if (!l) return { lines: [], status: "none" };
+    if (!l) return { lines: [], status: current.unavailable ? "unavailable" : "none" };
     if (l.instrumental) return { lines: [], status: "instrumental" };
     if (l.synced) return { lines: buildLines(parseLrc(l.raw), duration), status: "synced" };
     return { lines: buildUnsyncedLines(l.raw, duration), status: "unsynced" };
