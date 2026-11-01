@@ -1,7 +1,12 @@
 import "server-only";
 import type { Track } from "@/lib/types";
 import * as ytm from "@/lib/search/youtube-music";
-import { QuotaExceededError, getRadioOfficial, searchTracksOfficial } from "@/lib/search/youtube-data-api";
+import {
+  ClientBudgetExceededError,
+  QuotaExceededError,
+  getRadioOfficial,
+  searchTracksOfficial,
+} from "@/lib/search/youtube-data-api";
 
 /**
  * Picks the search backend from the environment:
@@ -16,16 +21,19 @@ const officialEnabled = Boolean(process.env.YOUTUBE_API_KEY);
 
 export class SearchUnavailableError extends Error {}
 
-export async function searchTracks(query: string, kind: Track["kind"] = "song"): Promise<Track[]> {
+/** `clientId` (the visitor's IP) meters each visitor's share of the official API quota. */
+export async function searchTracks(query: string, kind: Track["kind"], clientId: string): Promise<Track[]> {
   if (officialEnabled) {
     try {
-      return await searchTracksOfficial(query, kind);
+      return await searchTracksOfficial(query, kind, clientId);
     } catch (err) {
       if (!youtubeiEnabled) {
         throw new SearchUnavailableError(
-          err instanceof QuotaExceededError
-            ? "Today's search limit has been reached. Try again tomorrow."
-            : "Search is unavailable right now. Try again.",
+          err instanceof ClientBudgetExceededError
+            ? "You've reached today's search limit. Try again tomorrow, or play something from Home."
+            : err instanceof QuotaExceededError
+              ? "Today's search limit has been reached. Try again tomorrow."
+              : "Search is unavailable right now. Try again.",
         );
       }
       console.warn("official search failed, falling back to youtubei.js", err);
@@ -36,7 +44,7 @@ export async function searchTracks(query: string, kind: Track["kind"] = "song"):
 }
 
 /** Songs related to a track, for "Up next" and "Made for you". */
-export async function getRadio(videoId: string, artist?: string): Promise<Track[]> {
+export async function getRadio(videoId: string, clientId: string, artist?: string): Promise<Track[]> {
   // YouTube Music's automix is free and truly "related"; the official API costs a search
   if (youtubeiEnabled) {
     try {
@@ -45,7 +53,14 @@ export async function getRadio(videoId: string, artist?: string): Promise<Track[
       if (!officialEnabled || !artist) throw err;
     }
   }
-  if (officialEnabled && artist) return getRadioOfficial({ videoId, artist });
+  if (officialEnabled && artist) {
+    try {
+      return await getRadioOfficial({ videoId, artist }, clientId);
+    } catch (err) {
+      if (err instanceof ClientBudgetExceededError || err instanceof QuotaExceededError) return [];
+      throw err;
+    }
+  }
   return [];
 }
 

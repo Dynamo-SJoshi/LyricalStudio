@@ -11,8 +11,8 @@ type ItunesResult = {
 /** Genre (drives animation style) and high-res artwork from the free iTunes Search API. */
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const title = searchParams.get("title")?.trim();
-  const artist = searchParams.get("artist")?.trim();
+  const title = searchParams.get("title")?.trim().slice(0, 200);
+  const artist = searchParams.get("artist")?.trim().slice(0, 200);
   if (!title || !artist) return Response.json({ meta: {} });
 
   const term = `${cleanArtist(artist)} ${cleanTitle(title)}`;

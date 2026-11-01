@@ -157,6 +157,7 @@ Restart `npm run dev` after editing `.env.local`. Git ignores this file, so your
 | --- | --- | --- |
 | `YOUTUBE_API_KEY` | Uses the official [YouTube Data API](https://developers.google.com/youtube/v3) for search. See [the next section](#getting-a-youtube-data-api-key). | Not set: search uses youtubei.js |
 | `YOUTUBEI_ENABLED` | Set to `false` to never use youtubei.js, the unofficial YouTube Music client. Turns off the YouTube Music home feed, playlists and YouTube Music lyrics. Recommended for public sites, together with `YOUTUBE_API_KEY`. | On |
+| `YOUTUBE_SEARCHES_PER_IP_PER_DAY` | How many official-API searches one visitor can trigger per day. Cached searches don't count. Stops one person from using up the whole site's quota. | `25` |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Shares the per-visitor rate limits across all server instances, using a free [Upstash](https://upstash.com) Redis database. | Each instance counts on its own |
 | `RATE_LIMIT` | Set to `off` to disable rate limiting. | On |
 
@@ -195,7 +196,7 @@ LyricalStudio is a standard [Next.js](https://nextjs.org) app. [Vercel](https://
 4. Click **Deploy**. Every push to `main` deploys automatically after that.
 5. If you host your own copy, update the links and contact details on the privacy page ([`src/app/privacy/page.tsx`](src/app/privacy/page.tsx)).
 
-Other Node.js hosts work too: run `npm run build`, then `npm start` (it listens on port 3000; set `PORT` to change that).
+Other Node.js hosts work too: run `npm run build`, then `npm start` (it listens on port 3000; set `PORT` to change that). Put it behind a reverse proxy (e.g. Nginx or Caddy) that sets `X-Real-IP` and `X-Forwarded-For` itself; otherwise visitors can fake those headers to get around the rate limits.
 
 ## How it works
 
@@ -236,7 +237,7 @@ LyricalStudio never downloads, stores or redistributes audio.
 
 ## Limits and known issues
 
-- **Search quota (official API only):** the free 10,000 units a day buys about 100 new searches a day for the whole site. Repeated searches come from a cache. After the quota runs out, search shows a message until the next day (midnight Pacific time).
+- **Search quota (official API only):** the free 10,000 units a day buys about 100 new searches a day for the whole site. Repeated searches come from a cache. After the quota runs out, search shows a message until the next day (midnight Pacific time). To share it fairly, each visitor can trigger up to 25 of those searches a day (`YOUTUBE_SEARCHES_PER_IP_PER_DAY`).
 - **Some songs won't play** because the label blocks embedding. LyricalStudio tries another upload of the same song, then skips it.
 - **YouTube may show ads** before songs, as in any embedded YouTube player.
 - **Lyrics aren't guaranteed.** They come from free community services, so some songs have none, only approximate timing, or mistakes. When a service is down, recently played songs still have lyrics from the browser cache.
