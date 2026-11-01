@@ -1,7 +1,7 @@
 import "server-only";
 import type { LyricsResult } from "@/lib/types";
 import { cleanArtist, cleanTitle, findLyricsSafe } from "@/lib/lyrics/lrclib";
-import { getYouTubeLyrics } from "@/lib/search/youtube-music";
+import { getYouTubeLyrics } from "@/lib/search";
 
 const UA = "LyricalStudio/0.1 (https://github.com/arijit-debug/LyricalStudio-Web)";
 

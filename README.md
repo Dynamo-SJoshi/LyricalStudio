@@ -1,27 +1,69 @@
 # LyricalStudio
 
-An open-source music player for the web that turns lyrics into kinetic typography: bold, word-by-word motion in sync with the song, colored with an Apple-inspired palette drawn from each track's album art.
+**A free, open-source music player for the web that turns lyrics into kinetic typography.** Every word moves in time with the song, in bold type colored from the album art.
 
-Inspired by the [Cotodama Lyric Speaker](https://cotodama-speaker.com/). Not affiliated with Cotodama or Apple.
+[![CI](https://github.com/arijit-debug/LyricalStudio-Web/actions/workflows/ci.yml/badge.svg)](https://github.com/arijit-debug/LyricalStudio-Web/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-## Features
+![LyricalStudio playing a song: lyrics animate word by word in sync with the music](docs/media/demo-english.gif)
 
-- Search and play almost any song for free (YouTube Music catalog)
-- Time-synced lyrics, word by word where the source has word timings, animated as they're sung
-- Seven Cotodama-style text layouts (Stack, Slide, Zoom, Letters, Scatter, Graph, Flow), picked per line from the song's genre, pace and chorus, or chosen by hand
-- A Liquid Glass background drawn on the GPU (WebGL): flowing album-colored light under an undulating glass slab, with ripples spreading from each word as it's sung and a wave of light on every new line
-- White lyrics with vivid highlights in the album's colors, on randomly chosen words that change every time a song plays
-- Smooth motion on the GPU compositor: gliding springs, squash-and-stretch word entrances and trail motion blur; text stays crisp once it settles
-- Instrumental breaks show the song's title card; short pauses keep the last line on screen
-- Lines always fit on screen, whatever the song, language or window size
-- A home screen with suggestions: Quick picks and playlists from YouTube Music, "Made for you" radio, recently played and liked songs
-- Up next fills itself with related songs, and keeps going when the queue ends
-- Up next and video buttons in the header (pop-up queue, enlargeable video); full-screen mode (F)
-- Lyrics for recently played songs are kept in the browser, so they still show if the lyrics service is down
-- Press Shift+F for a frame-rate meter
-- English, Japanese (日本語) and Hindi (हिन्दी); romanized lines appear as subtitles
-- Per-song sync nudge if lyrics run early or late
-- Optional login (Google, GitHub or email link) through Supabase
+No account, no sign-up, no ads from us. Open it, search for a song, and watch the lyrics move.
+
+Inspired by the [Cotodama Lyric Speaker](https://cotodama-speaker.com/). Not affiliated with Cotodama, Apple, YouTube or Google.
+
+---
+
+## Contents
+
+- [What it does](#what-it-does)
+- [See it in action](#see-it-in-action)
+- [Using LyricalStudio](#using-lyricalstudio)
+- [Install and run it on your computer](#install-and-run-it-on-your-computer)
+- [Settings (environment variables)](#settings-environment-variables)
+- [Getting a YouTube Data API key](#getting-a-youtube-data-api-key)
+- [Putting it online (Vercel)](#putting-it-online-vercel)
+- [How it works](#how-it-works)
+- [Limits and known issues](#limits-and-known-issues)
+- [Troubleshooting](#troubleshooting)
+- [Privacy](#privacy)
+- [Contributing](#contributing)
+- [Credits and license](#credits-and-license)
+
+---
+
+## What it does
+
+- **Search and play almost any song.** Playback goes through YouTube's official embedded player, shown as a small video tile.
+- **Lyrics that move with the music:** synced line by line, and word by word where the lyrics source has word timings.
+- **Seven text layouts:** Stack, Slide, Zoom, Letters, Scatter, Graph and Flow. "Auto style" picks one for each line from the song's genre, pace and chorus, or you can choose one yourself.
+- **Colors from the album art:** white lyrics with vivid highlights on a few words per line, picked at random every time the song plays.
+- **A flowing "liquid glass" background** drawn on the GPU (WebGL), with ripples from each word as it's sung.
+- **Smooth, crisp motion:** springy word entrances and motion blur. Text stays sharp once it settles, and lines always fit on screen.
+- **English, Japanese (日本語) and Hindi (हिन्दी),** with romanized lines shown as subtitles when the source has them.
+- **Up next:** related songs line up automatically and keep playing when your queue ends.
+- **Home screen:** recently played songs, liked songs and "Made for you" suggestions.
+- **Sync nudge:** if lyrics run early or late, shift them with `[` and `]`. The fix is saved for that song.
+- **No account needed.** Likes, history and settings are saved in your browser.
+- **Respects "reduce motion"** in your operating system's accessibility settings.
+
+## See it in action
+
+| Japanese | Hindi |
+| --- | --- |
+| ![Japanese lyrics drawn along a flowing line](docs/media/demo-japanese.gif) | ![Hindi lyrics in Devanagari script](docs/media/demo-hindi.gif) |
+
+**Search as you type, then play:**
+
+![Searching for a song and starting playback](docs/media/search.gif)
+
+## Using LyricalStudio
+
+1. Press **Ctrl K** (or **/**) and type a song or artist.
+2. Click a result. The song starts and the lyrics stage opens.
+3. Use the bar at the bottom to play or pause, skip, seek, like a song (♥), nudge the sync or pick a lyric style.
+4. The buttons at the top right open **Up next**, enlarge the **video**, or go **full screen**.
+
+LyricalStudio is designed for desktop and laptop browsers (Chrome, Edge, Firefox, Safari). On phones it shows a "best on a bigger screen" notice, which you can dismiss.
 
 ### Keyboard shortcuts
 
@@ -29,51 +71,207 @@ Inspired by the [Cotodama Lyric Speaker](https://cotodama-speaker.com/). Not aff
 | --- | --- |
 | Ctrl K or / | Search |
 | Space | Play / pause |
-| Left / Right | Back / forward 5 seconds |
+| ← / → | Back / forward 5 seconds |
 | [ / ] | Lyrics earlier / later by 0.25 s |
 | F | Full screen |
-| Shift+F | Frame-rate meter |
+| Shift F | Frame-rate meter |
 | Esc | Close search, shrink the video |
 
-## How it works
+## Install and run it on your computer
 
-| Part | Source |
-| --- | --- |
-| Playback | The official [YouTube IFrame Player API](https://developers.google.com/youtube/iframe_api_reference) (a small floating mini-player, at least 200×200 as YouTube requires) |
-| Song search | YouTube Music, through [youtubei.js](https://github.com/LuanRT/YouTube.js) |
-| Artwork and metadata | [iTunes Search API](https://performance-partners.apple.com/search-api) |
-| Synced lyrics | [lrcmux](https://lrcmux.dev) (open source; word-synced where available, e.g. Deezer / KuGou), then [LRCLIB](https://lrclib.net) |
-| Fallback lyrics (plain, timing estimated) | YouTube Music's licensed lyrics (Musixmatch / LyricFind), then [lyrics.ovh](https://lyricsovh.docs.apiary.io) |
-| Login and storage | [Supabase](https://supabase.com) |
+You don't need any accounts or keys to run LyricalStudio locally.
 
-LyricalStudio does not download, host or redistribute any audio. All playback goes through YouTube's official embedded player.
+### 1. Install the tools
 
-## Getting started
+| Tool | Version | Get it |
+| --- | --- | --- |
+| Node.js | 20 or newer (22 LTS recommended) | [nodejs.org](https://nodejs.org) (the installer includes npm) |
+| Git | any recent version | [git-scm.com](https://git-scm.com/downloads) |
 
-Requires Node.js 20 or later.
+Check that they're installed by opening a terminal (PowerShell on Windows, Terminal on macOS or Linux) and running:
 
 ```bash
-git clone https://github.com/<your-username>/LyricalStudio-Web.git
+node -v   # should print v20 or higher
+git --version
+```
+
+### 2. Download the code
+
+```bash
+git clone https://github.com/arijit-debug/LyricalStudio-Web.git
 cd LyricalStudio-Web
+```
+
+Prefer not to use Git? Click **Code → Download ZIP** on GitHub, unzip it, and open a terminal in the unzipped folder.
+
+### 3. Install the dependencies
+
+```bash
 npm install
+```
+
+This takes a minute or two the first time.
+
+### 4. Start it
+
+```bash
 npm run dev
 ```
 
-Open http://localhost:3000. That's all you need: without Supabase keys the app runs in **guest mode**, and likes are saved in your browser.
+Open **http://localhost:3000** in your browser. That's it: search for a song and press play.
 
-### Turning on accounts (optional)
+To stop the server, press **Ctrl C** in the terminal.
 
-1. Create a free project at [supabase.com](https://supabase.com).
-2. In the SQL Editor, run [`supabase/schema.sql`](supabase/schema.sql) to create the likes table.
-3. Copy `.env.example` to `.env.local` and fill in the Project URL and anon key (Project Settings → API).
-4. Under Authentication → URL Configuration, add `http://localhost:3000` (and your deployed URL) to the redirect URLs.
-5. Optionally enable Google and GitHub under Authentication → Providers. Email links work out of the box.
-6. Restart `npm run dev`. Everyone must now sign in, and likes sync to their account.
+### Optional: run the faster production version
+
+`npm run dev` is for development: it reloads when you edit code, but it's slower. To run the optimized version:
+
+```bash
+npm run build
+npm start
+```
+
+Then open http://localhost:3000.
+
+## Settings (environment variables)
+
+**Everything is optional.** To change a setting, copy the example file and edit the copy:
+
+```bash
+# macOS / Linux
+cp .env.example .env.local
+# Windows (PowerShell)
+Copy-Item .env.example .env.local
+```
+
+Restart `npm run dev` after editing `.env.local`. Git ignores this file, so your keys never get committed.
+
+| Variable | What it does | Default |
+| --- | --- | --- |
+| `YOUTUBE_API_KEY` | Uses the official [YouTube Data API](https://developers.google.com/youtube/v3) for search. See [the next section](#getting-a-youtube-data-api-key). | Not set: search uses youtubei.js |
+| `YOUTUBEI_ENABLED` | Set to `false` to never use youtubei.js, the unofficial YouTube Music client. Turns off the YouTube Music home feed, playlists and YouTube Music lyrics. Recommended for public sites, together with `YOUTUBE_API_KEY`. | On |
+| `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Shares the per-visitor rate limits across all server instances, using a free [Upstash](https://upstash.com) Redis database. | Each instance counts on its own |
+| `RATE_LIMIT` | Set to `off` to disable rate limiting. | On |
+
+**Which search should I use?**
+
+- **On your own computer:** leave everything unset. youtubei.js has no daily limit and gives the richest home screen.
+- **On a public website:** set `YOUTUBE_API_KEY` and `YOUTUBEI_ENABLED=false`. youtubei.js is unofficial and isn't allowed by YouTube's Terms of Service, and YouTube often blocks it on cloud servers. The official API has a free daily quota instead (see [Limits](#limits-and-known-issues)).
+
+## Getting a YouTube Data API key
+
+The key is free. Google doesn't charge for YouTube Data API usage: when the daily quota runs out, search simply pauses until the next day.
+
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/) and sign in.
+2. Create a project: click the project picker at the top → **New project** → name it (e.g. `lyricalstudio`) → **Create**.
+3. Open **APIs & Services → Library**, search for **YouTube Data API v3**, and click **Enable**.
+4. Open **APIs & Services → Credentials → Create credentials → API key**.
+5. Click the new key and, under **API restrictions**, choose **Restrict key** → **YouTube Data API v3** → **Save**. Restricting it means a leaked key can't be used for any other Google API.
+6. Put it in `.env.local`:
+
+   ```bash
+   YOUTUBE_API_KEY=your-key-here
+   ```
+
+> **Keep the key secret.** Never commit it, paste it into an issue, or put it in a variable starting with `NEXT_PUBLIC_` (those are sent to the browser). You don't need a billing account for this API, so don't add one to the project.
+
+## Putting it online (Vercel)
+
+LyricalStudio is a standard [Next.js](https://nextjs.org) app. [Vercel](https://vercel.com)'s free Hobby plan is the simplest way to host it (non-commercial use only).
+
+1. Push your copy of the code to GitHub (or fork this repository).
+2. Sign in to [vercel.com](https://vercel.com) with GitHub → **Add New → Project** → import the repository.
+3. Under **Environment Variables**, add:
+   - `YOUTUBE_API_KEY` = your key
+   - `YOUTUBEI_ENABLED` = `false`
+   - Optional: `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`
+4. Click **Deploy**. Every push to `main` deploys automatically after that.
+5. If you host your own copy, update the links and contact details on the privacy page ([`src/app/privacy/page.tsx`](src/app/privacy/page.tsx)).
+
+Other Node.js hosts work too: run `npm run build`, then `npm start` (it listens on port 3000; set `PORT` to change that).
+
+## How it works
+
+```
+Browser                                    Server (Next.js API routes)
+───────                                    ───────────────────────────
+Search box ──────────────────────────────▶ /api/search  → YouTube Data API or youtubei.js
+YouTube IFrame player (plays the song)
+Lyrics stage ◀── synced lyrics ─────────── /api/lyrics  → lrcmux → LRCLIB → (fallbacks)
+Background colors ◀── artwork ──────────── /api/image   (artwork proxy for color extraction)
+Genre (picks styles) ◀─────────────────── /api/meta    → iTunes Search API
+Up next ◀────────────────────────────────── /api/radio
+Likes, history, settings → browser localStorage (no database, no accounts)
+```
+
+| Part | Source |
+| --- | --- |
+| Playback | The official [YouTube IFrame Player API](https://developers.google.com/youtube/iframe_api_reference). The video tile always stays visible, as YouTube requires. |
+| Search | [YouTube Data API v3](https://developers.google.com/youtube/v3) when a key is set, otherwise [youtubei.js](https://github.com/LuanRT/YouTube.js) |
+| Synced lyrics | [lrcmux](https://lrcmux.dev) (word-synced where available), then [LRCLIB](https://lrclib.net) |
+| Fallback lyrics (plain text; timing estimated) | YouTube Music's lyrics (only when youtubei.js is on), then [lyrics.ovh](https://lyricsovh.docs.apiary.io) |
+| Artwork and genre | [iTunes Search API](https://performance-partners.apple.com/search-api) |
+
+LyricalStudio never downloads, stores or redistributes audio.
+
+### Project layout
+
+| Folder | What's there |
+| --- | --- |
+| `src/app/api/` | Server routes: search, lyrics, meta, image, radio, home, playlist |
+| `src/app/privacy/` | Privacy policy and terms page |
+| `src/proxy.ts` | Per-visitor rate limits on `/api/*` |
+| `src/components/` | The app shell, player, lyrics stage, search panel and home screen |
+| `src/templates/` | The lyric animation layouts, one per file. `chooseTemplate()` in `index.ts` picks one per line. |
+| `src/lib/lyrics/` | LRC parsing, word-timing estimates, the lyrics cache |
+| `src/lib/search/` | Search backends (official API and youtubei.js) |
+| `src/lib/clock/` | Smooths the YouTube player's coarse time reports, so lyrics stay in sync |
+
+## Limits and known issues
+
+- **Search quota (official API only):** the free 10,000 units a day buys about 100 new searches a day for the whole site. Repeated searches come from a cache. After the quota runs out, search shows a message until the next day (midnight Pacific time).
+- **Some songs won't play** because the label blocks embedding. LyricalStudio tries another upload of the same song, then skips it.
+- **YouTube may show ads** before songs, as in any embedded YouTube player.
+- **Lyrics aren't guaranteed.** They come from free community services, so some songs have none, only approximate timing, or mistakes. When a service is down, recently played songs still have lyrics from the browser cache.
+- **The tab must stay open** for music to play. There's no background or offline playback.
+- **Desktop-first.** Phones work, but the layout is made for larger screens.
+- **Likes and history stay in one browser.** They don't sync between devices, and clearing site data removes them.
+
+## Troubleshooting
+
+| Problem | Fix |
+| --- | --- |
+| `node: command not found` or an old version | Install Node.js 20 or newer from [nodejs.org](https://nodejs.org), then open a new terminal. |
+| `npm install` fails | Delete the `node_modules` folder and run `npm install` again. On Windows, keep the project in a normal folder (e.g. `Documents`), not inside `C:\Program Files`. |
+| Port 3000 is already in use | Run `npm run dev -- -p 3001` and open http://localhost:3001. |
+| "Search is unavailable" | youtubei.js may be temporarily blocked by YouTube. Wait a bit, or set `YOUTUBE_API_KEY`. |
+| "Today's search limit has been reached" | The official API quota is used up. It resets at midnight Pacific time. |
+| "Search isn't configured on this server" | `YOUTUBEI_ENABLED=false` is set but `YOUTUBE_API_KEY` isn't. Add a key. |
+| No lyrics for a song | The lyrics services don't have it yet. LyricalStudio checks again every minute while the song plays. |
+| Lyrics are early or late | Press `[` or `]` (0.25 s steps). The fix is saved for that song. |
+| A style or CSS change doesn't show up in `npm run dev` | Stop the dev server and start it again. |
+| "Too many requests" | You hit the per-minute rate limit. Wait a minute. |
+
+## Privacy
+
+There are no accounts. Likes, history, cached lyrics and settings stay in your browser. The server sends only song details (title, artist, album, length) to the lyrics and artwork services, never anything about you. The YouTube player is run by Google under the [Google Privacy Policy](https://policies.google.com/privacy). Read the full [privacy policy and terms](src/app/privacy/page.tsx) (shown at `/privacy` in the app).
 
 ## Contributing
 
-Pull requests are welcome. New lyric animation templates are the easiest place to start (`src/templates/`). After changing a layout, open http://localhost:3000/dev/fit while `npm run dev` is running: it renders every line of ten songs in every layout and reports any word that would be cut off.
+Pull requests are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, good first contributions and the ground rules. A new lyric layout in `src/templates/` is a great first project.
 
-## License
+After changing a layout, run the fit check: with `npm run dev` running, open http://localhost:3000/dev/fit. It renders every line of ten songs in every layout and reports any word that would be cut off. Expect 0 failures.
 
-[MIT](LICENSE)
+Found a security problem? Please report it privately, as described in [SECURITY.md](SECURITY.md).
+
+## Credits and license
+
+- Lyrics: [lrcmux](https://lrcmux.dev), [LRCLIB](https://lrclib.net) and [lyrics.ovh](https://lyricsovh.docs.apiary.io). Song lyrics belong to their writers and publishers.
+- Playback: [YouTube](https://www.youtube.com). Search: [YouTube Data API](https://developers.google.com/youtube/v3) and [youtubei.js](https://github.com/LuanRT/YouTube.js).
+- Artwork and genres: [iTunes Search API](https://performance-partners.apple.com/search-api).
+- Fonts: system fonts, with [Inter](https://rsms.me/inter/), [Noto Sans JP](https://fonts.google.com/noto/specimen/Noto+Sans+JP) and [Noto Sans Devanagari](https://fonts.google.com/noto/specimen/Noto+Sans+Devanagari).
+- Design inspiration: the [Cotodama Lyric Speaker](https://cotodama-speaker.com/) and Apple's design language.
+
+The demo GIFs show short excerpts of songs and their artwork for illustration only. All rights belong to their owners.
+
+Released under the [MIT License](LICENSE).

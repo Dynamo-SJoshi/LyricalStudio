@@ -30,7 +30,7 @@ function loadFeed() {
 function loadRadio(seed: Track) {
   let p = radioCache.get(seed.videoId);
   if (!p) {
-    p = fetch(`/api/radio?id=${encodeURIComponent(seed.videoId)}`)
+    p = fetch(`/api/radio?id=${encodeURIComponent(seed.videoId)}&artist=${encodeURIComponent(seed.artist)}`)
       .then((r) => r.json())
       .then((d: { tracks?: Track[] }) => (d.tracks ?? []).filter((t) => t.videoId !== seed.videoId).slice(0, 18))
       .catch(() => []);
@@ -109,6 +109,16 @@ export function HomeView() {
         ),
       )}
       {likes.length > 0 && <SongRow title="Your liked songs" tracks={likes.slice(0, 20)} onPlay={(i) => playQueue(likes, i)} />}
+      <p className="mt-12 text-xs text-tertiary">
+        <a href="/privacy" className="hover:text-foreground">
+          Privacy &amp; terms
+        </a>
+        {" · "}
+        <a href="https://github.com/arijit-debug/LyricalStudio-Web" target="_blank" rel="noreferrer" className="hover:text-foreground">
+          Source on GitHub
+        </a>
+        {" · "}Lyrics from lrcmux and LRCLIB
+      </p>
     </div>
   );
 }

@@ -1,11 +1,14 @@
-import { getRadio } from "@/lib/search/youtube-music";
+import { getRadio } from "@/lib/search";
 
 /** Songs related to a video (for "Up next" and "Made for you"). */
 export async function GET(request: Request) {
-  const id = new URL(request.url).searchParams.get("id");
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get("id");
   if (!id || !/^[\w-]{6,20}$/.test(id)) return Response.json({ tracks: [] }, { status: 400 });
+  // used when radio comes from the official API, which can only search by artist
+  const artist = searchParams.get("artist")?.trim().slice(0, 120) || undefined;
   try {
-    const tracks = await getRadio(id);
+    const tracks = await getRadio(id, artist);
     return Response.json({ tracks }, { headers: { "Cache-Control": "public, s-maxage=3600" } });
   } catch (err) {
     console.error("radio failed", err);

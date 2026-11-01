@@ -1,5 +1,5 @@
 import { connection } from "next/server";
-import { getHomeSections } from "@/lib/search/youtube-music";
+import { getHomeSections } from "@/lib/search";
 
 export async function GET() {
   // fetched live per request (YouTube Music's feed), never prerendered at build time

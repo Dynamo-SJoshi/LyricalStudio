@@ -1,4 +1,4 @@
-import { searchTracks } from "@/lib/search/youtube-music";
+import { SearchUnavailableError, searchTracks } from "@/lib/search";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -15,6 +15,7 @@ export async function GET(request: Request) {
     );
   } catch (err) {
     console.error("search failed", err);
-    return Response.json({ error: "Search is unavailable right now. Try again." }, { status: 502 });
+    const message = err instanceof SearchUnavailableError ? err.message : "Search is unavailable right now. Try again.";
+    return Response.json({ error: message }, { status: 502 });
   }
 }
