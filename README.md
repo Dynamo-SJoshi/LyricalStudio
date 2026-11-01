@@ -5,9 +5,11 @@
 [![CI](https://github.com/arijit-debug/LyricalStudio/actions/workflows/ci.yml/badge.svg)](https://github.com/arijit-debug/LyricalStudio/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-![LyricalStudio playing a song: lyrics animate word by word in sync with the music](docs/media/demo-english.gif)
+### ▶ [Open LyricalStudio: lyricalstudio.vercel.app](https://lyricalstudio.vercel.app)
 
-No account, no sign-up, no ads from us. Open it, search for a song, and watch the lyrics move.
+Nothing to install, no account, no sign-up. Open the link, search for a song, and watch the lyrics move.
+
+![LyricalStudio playing a song: lyrics animate word by word in sync with the music](docs/media/demo-english.gif)
 
 Inspired by the [Cotodama Lyric Speaker](https://cotodama-speaker.com/). Not affiliated with Cotodama, Apple, YouTube or Google.
 
@@ -58,10 +60,11 @@ Inspired by the [Cotodama Lyric Speaker](https://cotodama-speaker.com/). Not aff
 
 ## Using LyricalStudio
 
-1. Press **Ctrl K** (or **/**) and type a song or artist.
-2. Click a result. The song starts and the lyrics stage opens.
-3. Use the bar at the bottom to play or pause, skip, seek, like a song (♥), nudge the sync or pick a lyric style.
-4. The buttons at the top right open **Up next**, enlarge the **video**, or go **full screen**.
+1. Open **[lyricalstudio.vercel.app](https://lyricalstudio.vercel.app)** in a desktop browser.
+2. Press **Ctrl K** (or **/**) and type a song or artist.
+3. Click a result. The song starts and the lyrics stage opens.
+4. Use the bar at the bottom to play or pause, skip, seek, like a song (♥), nudge the sync or pick a lyric style.
+5. The buttons at the top right open **Up next**, enlarge the **video**, or go **full screen**.
 
 LyricalStudio is designed for desktop and laptop browsers (Chrome, Edge, Firefox, Safari). On phones it shows a "best on a bigger screen" notice, which you can dismiss.
 
@@ -78,6 +81,10 @@ LyricalStudio is designed for desktop and laptop browsers (Chrome, Edge, Firefox
 | Esc | Close search, shrink the video |
 
 ## Install and run it on your computer
+
+> **Just want to use the app?** You don't need any of this. Open **[lyricalstudio.vercel.app](https://lyricalstudio.vercel.app)**.
+>
+> This section is for running your own copy, for example to change the code or contribute.
 
 You don't need any accounts or keys to run LyricalStudio locally.
 
@@ -254,7 +261,7 @@ LyricalStudio never downloads, stores or redistributes audio.
 
 ## Privacy
 
-There are no accounts. Likes, history, cached lyrics and settings stay in your browser. The server sends only song details (title, artist, album, length) to the lyrics and artwork services, never anything about you. The YouTube player is run by Google under the [Google Privacy Policy](https://policies.google.com/privacy). Read the full [privacy policy and terms](src/app/privacy/page.tsx) (shown at `/privacy` in the app).
+There are no accounts. Likes, history, cached lyrics and settings stay in your browser. The server sends only song details (title, artist, album, length) to the lyrics and artwork services, never anything about you. The YouTube player is run by Google under the [Google Privacy Policy](https://policies.google.com/privacy). Read the full [privacy policy and terms](https://lyricalstudio.vercel.app/privacy).
 
 ## Contributing
 
