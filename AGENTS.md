@@ -23,7 +23,7 @@ Open-source (MIT) web music player whose main feature is Cotodama-style kinetic 
 - No secrets in the repo: keys live in .env.local; document every key in .env.example.
 
 ## Layout
-- src/app/api — search (youtubei.js), lyrics (LRCLIB), meta (iTunes genre/artwork), image (artwork proxy for color extraction)
+- src/app/api — search, radio, home, playlist (YouTube), lyrics (LRCLIB + lrcmux), meta (iTunes genre/artwork), image (artwork proxy for color extraction)
 - src/lib/lyrics — LRC parsing, word timing estimates (per-song pace), useTrackData hook
 - src/lib/clock — PlaybackClock smooths the IFrame player's coarse time reports
 - src/lib/search — search backends: official YouTube Data API (YOUTUBE_API_KEY) or youtubei.js (YOUTUBEI_ENABLED)
