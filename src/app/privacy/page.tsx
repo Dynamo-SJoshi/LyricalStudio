@@ -8,8 +8,6 @@ export const metadata: Metadata = {
 
 const REPO = "https://github.com/arijit-debug/LyricalStudio-Web";
 const UPDATED = "November 1, 2026";
-/** accounts exist only when the deployment has Supabase keys; otherwise everyone is a guest */
-const accounts = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
 export default function PrivacyPage() {
   return (
@@ -23,25 +21,17 @@ export default function PrivacyPage() {
       <Section title="In short">
         <p>
           LyricalStudio is a free, open-source hobby project. It has no ads, doesn&apos;t sell or share your data, and
-          keeps as little as it can.{" "}
-          {accounts ? "" : "There are no accounts: everything you do stays in your browser. "}Music plays through YouTube&apos;s official embedded player; LyricalStudio never
-          downloads or hosts audio.
+          keeps as little as it can. There are no accounts: everything you do stays in your browser. Music plays through
+          YouTube&apos;s official embedded player; LyricalStudio never downloads or hosts audio.
         </p>
       </Section>
 
       <Section title="What's stored">
         <ul className="list-disc space-y-2 pl-5">
-          {accounts && (
-            <li>
-              <b>If you sign in:</b> your email address, and the name and profile picture your Google or GitHub account
-              shares, kept by our login provider <A href="https://supabase.com/privacy">Supabase</A>. We also store the
-              songs you like, so they follow you between devices.
-            </li>
-          )}
           <li>
-            <b>In your browser only</b> (never sent to us): recently played songs,{" "}
-            {accounts ? "liked songs in guest mode" : "liked songs"}, cached lyrics, per-song lyric timing adjustments,
-            and your layout and volume settings. Clearing your browser&apos;s site data removes them.
+            <b>In your browser only</b> (never sent to us): recently played songs, liked songs, cached lyrics, per-song
+            lyric timing adjustments, and your layout and volume settings. Clearing your browser&apos;s site data
+            removes them.
           </li>
           <li>
             <b>Server logs:</b> our hosting provider keeps short-lived request logs (including IP addresses) for
@@ -68,23 +58,19 @@ export default function PrivacyPage() {
       </Section>
 
       <Section title="Deleting your data">
-        <p>
-          Everything kept in your browser goes away when you clear this site&apos;s data in your browser settings.
-          {accounts && (
-            <>
-              {" "}
-              To delete your account and likes, <A href={`${REPO}/issues/new`}>open an issue</A> asking for it
-              (don&apos;t post your email address publicly; we&apos;ll get in touch privately), or email the address on
-              the maintainer&apos;s GitHub profile.
-            </>
-          )}
-        </p>
+        <p>Everything kept in your browser goes away when you clear this site&apos;s data in your browser settings.</p>
       </Section>
 
       <Section title="Terms">
         <ul className="list-disc space-y-2 pl-5">
-          <li>LyricalStudio is provided as is, without warranty, under the <A href={`${REPO}/blob/main/LICENSE`}>MIT License</A>. It may change or go offline at any time.</li>
-          <li>Songs, videos, artwork and lyrics belong to their owners. Lyrics come from community and third-party services and may be inaccurate.</li>
+          <li>
+            LyricalStudio is provided as is, without warranty, under the{" "}
+            <A href={`${REPO}/blob/main/LICENSE`}>MIT License</A>. It may change or go offline at any time.
+          </li>
+          <li>
+            Songs, videos, artwork and lyrics belong to their owners. Lyrics come from community and third-party
+            services and may be inaccurate.
+          </li>
           <li>
             If you own content shown here and want it removed, <A href={`${REPO}/issues/new`}>open an issue</A> and
             we&apos;ll take it down promptly.

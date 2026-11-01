@@ -13,7 +13,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000. You don't need any keys: without them the app runs in guest mode, and search uses youtubei.js. See [`.env.example`](.env.example) for the optional settings (Supabase accounts, the official YouTube Data API, rate limiting).
+Open http://localhost:3000. You don't need any keys: there are no accounts (likes and history are saved in the browser), and search uses youtubei.js. See [`.env.example`](.env.example) for the optional settings (the official YouTube Data API and rate limiting).
 
 ## Good first contributions
 

@@ -2,9 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { MotionConfig } from "motion/react";
-import { AuthProvider, useAuth } from "@/components/auth/AuthProvider";
-import { LoginScreen } from "@/components/auth/LoginScreen";
-import { UserMenu } from "@/components/auth/UserMenu";
 import { PlayerProvider, usePlayer } from "@/components/player/PlayerProvider";
 import { ControlBar } from "@/components/player/ControlBar";
 import { SideRail } from "@/components/player/SideRail";
@@ -25,24 +22,13 @@ export function AppShell() {
   return (
     // honors the OS "reduce motion" setting for every animation
     <MotionConfig reducedMotion="user">
-      <AuthProvider>
-        <Gate />
-        <MobileNotice />
-      </AuthProvider>
+      <LikesProvider>
+        <PlayerProvider>
+          <Studio />
+        </PlayerProvider>
+      </LikesProvider>
+      <MobileNotice />
     </MotionConfig>
-  );
-}
-
-function Gate() {
-  const { enabled, loading, user } = useAuth();
-  if (enabled && loading) return <main className="flex-1 bg-black" />;
-  if (enabled && !user) return <LoginScreen />;
-  return (
-    <LikesProvider>
-      <PlayerProvider>
-        <Studio />
-      </PlayerProvider>
-    </LikesProvider>
   );
 }
 
@@ -129,7 +115,6 @@ function Studio() {
         </div>
         <SearchPanel />
         <div className="flex w-[300px] items-center justify-end gap-2">
-          <UserMenu />
           {current && <SideRail videoBig={videoBig} onToggleVideo={() => setVideoBig((v) => !v)} />}
           <FullscreenButton />
         </div>
