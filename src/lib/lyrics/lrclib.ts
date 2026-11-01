@@ -4,7 +4,7 @@ import type { LyricsResult } from "@/lib/types";
 const BASE = "https://lrclib.net/api";
 // LRCLIB asks clients to identify themselves.
 const HEADERS = {
-  "User-Agent": "LyricalStudio/0.1 (https://github.com/arijit-debug/LyricalStudio-Web)",
+  "User-Agent": "LyricalStudio/0.1 (https://github.com/arijit-debug/LyricalStudio)",
 };
 
 type LrclibRecord = {

@@ -7,8 +7,8 @@ Thanks for helping! Bug reports, ideas and pull requests are all welcome.
 Requires Node.js 20 or later.
 
 ```bash
-git clone https://github.com/arijit-debug/LyricalStudio-Web.git
-cd LyricalStudio-Web
+git clone https://github.com/arijit-debug/LyricalStudio.git
+cd LyricalStudio
 npm install
 npm run dev
 ```
@@ -19,7 +19,7 @@ Open http://localhost:3000. You don't need any keys: there are no accounts (like
 
 - **A new lyric layout.** Templates live in [`src/templates/`](src/templates), one per file. Copy a simple one (such as `Slide.tsx`), register it in `index.ts`, and `chooseTemplate()` can start picking it.
 - **Fixes for songs whose lyrics are mistimed or don't show.** Include the artist and title in the issue or PR.
-- Issues labelled [`good first issue`](https://github.com/arijit-debug/LyricalStudio-Web/labels/good%20first%20issue).
+- Issues labelled [`good first issue`](https://github.com/arijit-debug/LyricalStudio/labels/good%20first%20issue).
 
 ## Workflow
 

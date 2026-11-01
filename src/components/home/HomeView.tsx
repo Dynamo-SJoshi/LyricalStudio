@@ -114,7 +114,7 @@ export function HomeView() {
           Privacy &amp; terms
         </a>
         {" · "}
-        <a href="https://github.com/arijit-debug/LyricalStudio-Web" target="_blank" rel="noreferrer" className="hover:text-foreground">
+        <a href="https://github.com/arijit-debug/LyricalStudio" target="_blank" rel="noreferrer" className="hover:text-foreground">
           Source on GitHub
         </a>
         {" · "}Lyrics from lrcmux and LRCLIB

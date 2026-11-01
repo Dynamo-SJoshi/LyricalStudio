@@ -1,5 +1,5 @@
 blank_issues_enabled: true
 contact_links:
   - name: Report a security problem
-    url: https://github.com/arijit-debug/LyricalStudio-Web/security/advisories/new
+    url: https://github.com/arijit-debug/LyricalStudio/security/advisories/new
     about: Please report security issues privately, not as a public issue.

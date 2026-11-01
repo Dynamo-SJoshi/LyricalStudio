@@ -2,7 +2,7 @@
 
 **A free, open-source music player for the web that turns lyrics into kinetic typography.** Every word moves in time with the song, in bold type colored from the album art.
 
-[![CI](https://github.com/arijit-debug/LyricalStudio-Web/actions/workflows/ci.yml/badge.svg)](https://github.com/arijit-debug/LyricalStudio-Web/actions/workflows/ci.yml)
+[![CI](https://github.com/arijit-debug/LyricalStudio/actions/workflows/ci.yml/badge.svg)](https://github.com/arijit-debug/LyricalStudio/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 ![LyricalStudio playing a song: lyrics animate word by word in sync with the music](docs/media/demo-english.gif)
@@ -98,8 +98,8 @@ git --version
 ### 2. Download the code
 
 ```bash
-git clone https://github.com/arijit-debug/LyricalStudio-Web.git
-cd LyricalStudio-Web
+git clone https://github.com/arijit-debug/LyricalStudio.git
+cd LyricalStudio
 ```
 
 Prefer not to use Git? Click **Code → Download ZIP** on GitHub, unzip it, and open a terminal in the unzipped folder.

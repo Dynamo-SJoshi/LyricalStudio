@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   description: "What LyricalStudio stores, which services it talks to, and the terms for using it.",
 };
 
-const REPO = "https://github.com/arijit-debug/LyricalStudio-Web";
+const REPO = "https://github.com/arijit-debug/LyricalStudio";
 const UPDATED = "November 1, 2026";
 
 export default function PrivacyPage() {
