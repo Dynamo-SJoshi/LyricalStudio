@@ -138,7 +138,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   /** Append related songs to the queue (no duplicates). */
   const extendWithRadio = useCallback(async (seed: Track) => {
     try {
-      const res = await fetch(`/api/radio?id=${encodeURIComponent(seed.videoId)}`);
+      const res = await fetch(`/api/radio?id=${encodeURIComponent(seed.videoId)}&artist=${encodeURIComponent(seed.artist)}`);
       const { tracks } = (await res.json()) as { tracks?: Track[] };
       if (!tracks?.length) return false;
       const { queue: q, index: i } = stateRef.current;

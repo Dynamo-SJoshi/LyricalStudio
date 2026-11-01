@@ -14,6 +14,7 @@ import { YouTubeTile } from "@/components/player/YouTubeTile";
 import { SearchPanel } from "@/components/search/SearchPanel";
 import { AmbientBackground } from "@/components/stage/AmbientBackground";
 import { FpsMeter } from "@/components/FpsMeter";
+import { MobileNotice } from "@/components/MobileNotice";
 import { LyricsStage } from "@/components/stage/LyricsStage";
 import { LikesProvider } from "@/lib/library/likes";
 import { readOffset, writeOffset } from "@/lib/library/recent";
@@ -26,6 +27,7 @@ export function AppShell() {
     <MotionConfig reducedMotion="user">
       <AuthProvider>
         <Gate />
+        <MobileNotice />
       </AuthProvider>
     </MotionConfig>
   );

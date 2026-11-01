@@ -1,0 +1,38 @@
+name: Bug report
+description: Something doesn't work or looks wrong
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead? Screenshots or a short recording help a lot.
+    validations:
+      required: true
+  - type: input
+    id: song
+    attributes:
+      label: Song (if it's about lyrics or playback)
+      placeholder: Artist - Title
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Search for ...
+        2. Play ...
+        3. See ...
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and OS
+      placeholder: Chrome 140 on Windows 11
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where
+      options:
+        - The hosted app
+        - Running it locally

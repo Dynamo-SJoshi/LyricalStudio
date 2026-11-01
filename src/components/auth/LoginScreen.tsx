@@ -80,6 +80,13 @@ export function LoginScreen() {
           </form>
         )}
         {error && <p className="mt-4 text-sm text-[var(--system-red)]">{error}</p>}
+        <p className="mt-6 text-center text-xs text-secondary">
+          By continuing you agree to the{" "}
+          <a href="/privacy" className="underline hover:text-foreground">
+            terms and privacy policy
+          </a>
+          .
+        </p>
       </motion.div>
     </main>
   );

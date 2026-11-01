@@ -40,7 +40,7 @@ Inspired by the [Cotodama Lyric Speaker](https://cotodama-speaker.com/). Not aff
 | Part | Source |
 | --- | --- |
 | Playback | The official [YouTube IFrame Player API](https://developers.google.com/youtube/iframe_api_reference) (a small floating mini-player, at least 200×200 as YouTube requires) |
-| Song search | YouTube Music, through [youtubei.js](https://github.com/LuanRT/YouTube.js) |
+| Song search | The official [YouTube Data API v3](https://developers.google.com/youtube/v3) when `YOUTUBE_API_KEY` is set, otherwise YouTube Music through [youtubei.js](https://github.com/LuanRT/YouTube.js) |
 | Artwork and metadata | [iTunes Search API](https://performance-partners.apple.com/search-api) |
 | Synced lyrics | [lrcmux](https://lrcmux.dev) (open source; word-synced where available, e.g. Deezer / KuGou), then [LRCLIB](https://lrclib.net) |
 | Fallback lyrics (plain, timing estimated) | YouTube Music's licensed lyrics (Musixmatch / LyricFind), then [lyrics.ovh](https://lyricsovh.docs.apiary.io) |
@@ -53,7 +53,7 @@ LyricalStudio does not download, host or redistribute any audio. All playback go
 Requires Node.js 20 or later.
 
 ```bash
-git clone https://github.com/<your-username>/LyricalStudio-Web.git
+git clone https://github.com/arijit-debug/LyricalStudio-Web.git
 cd LyricalStudio-Web
 npm install
 npm run dev
@@ -70,9 +70,23 @@ Open http://localhost:3000. That's all you need: without Supabase keys the app r
 5. Optionally enable Google and GitHub under Authentication → Providers. Email links work out of the box.
 6. Restart `npm run dev`. Everyone must now sign in, and likes sync to their account.
 
+## Deploying your own copy
+
+LyricalStudio is a standard Next.js app, so [Vercel](https://vercel.com) (or any Node.js host) works:
+
+1. Import the repository in Vercel.
+2. Add the environment variables from [`.env.example`](.env.example). For a public site, set:
+   - `YOUTUBE_API_KEY` and `YOUTUBEI_ENABLED=false`, so search uses the official YouTube Data API. The free quota is about 100 searches a day; results are cached.
+   - `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`, so the per-IP rate limits on `/api/*` are shared across server instances.
+   - The Supabase keys, if you want accounts.
+3. In Supabase, add your production URL under Authentication → URL Configuration.
+4. Update the contact details on the [privacy page](src/app/privacy/page.tsx) if you host your own copy.
+
 ## Contributing
 
-Pull requests are welcome. New lyric animation templates are the easiest place to start (`src/templates/`). After changing a layout, open http://localhost:3000/dev/fit while `npm run dev` is running: it renders every line of ten songs in every layout and reports any word that would be cut off.
+Pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, good first contributions and the ground rules. New lyric animation templates are the easiest place to start (`src/templates/`). After changing a layout, open http://localhost:3000/dev/fit while `npm run dev` is running: it renders every line of ten songs in every layout and reports any word that would be cut off.
+
+Found a security problem? Please report it privately (see [SECURITY.md](SECURITY.md)).
 
 ## License
 

@@ -1,4 +1,4 @@
-import { getPlaylistTracks } from "@/lib/search/youtube-music";
+import { getPlaylistTracks } from "@/lib/search";
 
 export async function GET(request: Request) {
   const id = new URL(request.url).searchParams.get("id");
