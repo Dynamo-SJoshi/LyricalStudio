@@ -7,7 +7,7 @@ export const metadata: Metadata = {
 };
 
 const REPO = "https://github.com/arijit-debug/LyricalStudio";
-const UPDATED = "November 1, 2026";
+const UPDATED = "November 2, 2026";
 
 export default function PrivacyPage() {
   return (
@@ -32,6 +32,12 @@ export default function PrivacyPage() {
             <b>In your browser only</b> (never sent to us): recently played songs, liked songs, cached lyrics, per-song
             lyric timing adjustments, and your layout and volume settings. Clearing your browser&apos;s site data
             removes them.
+          </li>
+          <li>
+            <b>Visit statistics:</b> we count visits with{" "}
+            <A href="https://vercel.com/docs/analytics/privacy-policy">Vercel Web Analytics</A>, which uses no cookies and
+            doesn&apos;t identify you. It records the page, the site you came from, your country, and your browser,
+            operating system and device type.
           </li>
           <li>
             <b>Server logs:</b> our hosting provider keeps short-lived request logs (including IP addresses) for

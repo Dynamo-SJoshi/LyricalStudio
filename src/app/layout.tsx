@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Noto_Sans_JP, Noto_Sans_Devanagari } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 // SF Pro can't be redistributed, so we rely on the system font stack
@@ -37,6 +38,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       {/* extensions (e.g. ColorZilla) add attributes to <body> before React loads */}
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         {children}
+        {/* Vercel Web Analytics: cookieless page-view counts; does nothing outside Vercel */}
+        <Analytics />
       </body>
     </html>
   );
