@@ -262,7 +262,7 @@ LyricalStudio never downloads, stores or redistributes audio.
 
 ## Privacy
 
-There are no accounts. Likes, history, cached lyrics and settings stay in your browser. The server sends only song details (title, artist, album, length) to the lyrics and artwork services, never anything about you. The YouTube player is run by Google under the [Google Privacy Policy](https://policies.google.com/privacy). Read the full [privacy policy and terms](https://lyricalstudio.vercel.app/privacy).
+There are no accounts. Likes, history, cached lyrics and settings stay in your browser. The hosted site counts visits with Vercel Web Analytics, which is cookieless and anonymous. The server sends only song details (title, artist, album, length) to the lyrics and artwork services, never anything about you. The YouTube player is run by Google under the [Google Privacy Policy](https://policies.google.com/privacy). Read the full [privacy policy and terms](https://lyricalstudio.vercel.app/privacy).
 
 ## Contributing
 
