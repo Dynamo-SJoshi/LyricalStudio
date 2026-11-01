@@ -2,8 +2,9 @@ import { findLyricsAnySource } from "@/lib/lyrics/sources";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const title = searchParams.get("title")?.trim();
-  const artist = searchParams.get("artist")?.trim();
+  // generous caps on text passed through to the lyrics services
+  const title = searchParams.get("title")?.trim().slice(0, 200);
+  const artist = searchParams.get("artist")?.trim().slice(0, 200);
   if (!title || !artist) return Response.json({ error: "title and artist are required" }, { status: 400 });
 
   const durationParam = Number(searchParams.get("duration"));
@@ -12,7 +13,7 @@ export async function GET(request: Request) {
     videoId: videoId && /^[\w-]{6,20}$/.test(videoId) ? videoId : undefined,
     title,
     artist,
-    album: searchParams.get("album") ?? undefined,
+    album: searchParams.get("album")?.trim().slice(0, 200) || undefined,
     duration: Number.isFinite(durationParam) && durationParam > 0 ? durationParam : undefined,
   });
 

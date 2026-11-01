@@ -1,11 +1,14 @@
 import "server-only";
 import type { Track } from "@/lib/types";
+import { hit } from "@/lib/rate-limit";
 
 /**
  * Song search through the official YouTube Data API v3 (needs YOUTUBE_API_KEY).
  *
  * Quota: the free 10,000 units/day buys about 100 searches (search.list = 100 units,
- * videos.list = 1), so results are cached in memory on top of the CDN cache.
+ * videos.list = 1), so results are cached in memory on top of the CDN cache, and each
+ * visitor gets a daily budget of real API calls (cache hits are free), so one person
+ * can't use up the whole site's quota.
  */
 
 const API = "https://www.googleapis.com/youtube/v3";
@@ -16,6 +19,26 @@ export class QuotaExceededError extends Error {
   constructor() {
     super("YouTube Data API quota exceeded");
   }
+}
+
+/** This visitor has used up their own daily share of API searches. */
+export class ClientBudgetExceededError extends Error {
+  constructor() {
+    super("Daily search budget for this visitor used up");
+  }
+}
+
+const DAY_SEC = 24 * 60 * 60;
+/** API searches (cache misses) one visitor may trigger per day; ~101 quota units each */
+function dailyBudget() {
+  const n = Number(process.env.YOUTUBE_SEARCHES_PER_IP_PER_DAY);
+  return Number.isFinite(n) && n > 0 ? n : 25;
+}
+
+/** Charge one API search to `clientId`; throws once their daily budget is gone. */
+async function spend(clientId: string) {
+  const { count } = await hit(`yt-api:${clientId}`, DAY_SEC);
+  if (count > dailyBudget()) throw new ClientBudgetExceededError();
 }
 
 type SearchItem = {
@@ -31,16 +54,16 @@ type VideoItem = {
 const cache = new Map<string, { at: number; tracks: Track[] }>();
 
 function cached(key: string) {
-  const hit = cache.get(key);
-  if (!hit) return null;
-  if (Date.now() - hit.at > CACHE_TTL_MS) {
+  const entry = cache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.at > CACHE_TTL_MS) {
     cache.delete(key);
     return null;
   }
   // re-insert so the Map's order stays least-recently-used first
   cache.delete(key);
-  cache.set(key, hit);
-  return hit.tracks;
+  cache.set(key, entry);
+  return entry.tracks;
 }
 
 function remember(key: string, tracks: Track[]) {
@@ -126,10 +149,11 @@ async function searchVideos(q: string, maxResults: number): Promise<Track[]> {
     .filter((t): t is Track => t !== null);
 }
 
-export async function searchTracksOfficial(query: string, kind: Track["kind"] = "song"): Promise<Track[]> {
+export async function searchTracksOfficial(query: string, kind: Track["kind"], clientId: string): Promise<Track[]> {
   const key = `${kind}:${query.toLowerCase()}`;
-  const hit = cached(key);
-  if (hit) return hit;
+  const fromCache = cached(key);
+  if (fromCache) return fromCache;
+  await spend(clientId);
   const found = await searchVideos(query, 15);
   // songs: album uploads first; videos: music videos first
   const tracks = [...found].sort((a, b) => Number(b.kind === kind) - Number(a.kind === kind));
@@ -141,10 +165,11 @@ export async function searchTracksOfficial(query: string, kind: Track["kind"] = 
  * Related songs. The Data API no longer offers "related videos", so this searches for
  * more by the same artist (cached per artist, since it costs a full search).
  */
-export async function getRadioOfficial(seed: { videoId: string; artist: string }): Promise<Track[]> {
+export async function getRadioOfficial(seed: { videoId: string; artist: string }, clientId: string): Promise<Track[]> {
   const key = `radio:${seed.artist.toLowerCase()}`;
   let tracks = cached(key);
   if (!tracks) {
+    await spend(clientId);
     tracks = await searchVideos(seed.artist, 25);
     remember(key, tracks);
   }
