@@ -15,7 +15,7 @@ Open-source (MIT) web music player whose main feature is Cotodama-style kinetic 
 
 ## Decisions already made (don't revisit without the owner)
 - Playback: official YouTube IFrame Player API. YouTube policy requires the player to stay visible and uncovered (min 200x200 px), so show it as a small video tile; never hide or overlay it. Never download, rip, proxy or host audio (no yt-dlp, no stream extraction).
-- Search: the official YouTube Data API when YOUTUBE_API_KEY is set, otherwise youtubei.js on the server (prefer "Artist - Topic" album uploads for lyric timing). Metadata/artwork: iTunes Search API. Lyrics: lrcmux and LRCLIB (credit them).
+- Search: the official YouTube Data API when YOUTUBE_API_KEY is set, otherwise youtubei.js on the server (prefer "Artist - Topic" album uploads for lyric timing). Metadata/artwork: iTunes Search API. Lyrics: LRCLIB, plus lrcmux for word timing (credit them).
 - No accounts: the app is guest-only. Likes, recently played songs and per-song sync offsets live in the browser (localStorage). Don't add login or a database without the owner.
 - Languages: English, Japanese, Hindi. Japanese needs word segmentation (Intl.Segmenter), Hindi uses Devanagari fonts.
 - Style: bold Cotodama-like typography, Apple system colors + album-art palette. Respect prefers-reduced-motion.
@@ -36,8 +36,9 @@ Open-source (MIT) web music player whose main feature is Cotodama-style kinetic 
 ## Conventions
 - Layout: Home uses the full width; the lyrics stage keeps clear of the 200x200 floating mini-player (YouTube requires it visible while playing). Up next / video / full-screen live in the header. Scrollbars are hidden globally; rows have arrow buttons.
 - Exactly one YouTube player: PlayerProvider.attachHost records the host synchronously (dev Strict Mode attaches twice). After loadVideoById the IFrame API keeps reporting the old video's time (and ads may play): confirmSwitch gates the clock until the new song is really playing.
-- Lyrics sources (src/lib/lyrics/sources.ts): lrcmux (api.lrcmux.dev/get?format=lrc, word-synced enhanced LRC when available) → LRCLIB (line-synced) → YouTube Music lyrics (plain) → lyrics.ovh (plain). Japanese per-character word timings are regrouped into phrases in buildLines. Plain lyrics get estimated timing (buildUnsyncedLines) and upgradeLater=true while LRCLIB is down, so the app re-checks every minute. Don't spoof headers or work around bot checks to reach other sources.
-- Lyrics: LRCLIB outages return { unavailable: true } with status 503 (never cached); the client retries every 20 s and keeps the last 150 songs' lyrics in localStorage (src/lib/lyrics/cache.ts).
+- Lyrics sources (src/lib/lyrics/sources.ts): LRCLIB is the main source. lrcmux (api.lrcmux.dev/get?format=lrc) is used only when it has word-by-word timing AND its line timing agrees with LRCLIB (timingAgrees), or LRCLIB has no synced lyrics. lrcmux line-only results are never used (they can be badly off, e.g. merged lines). No guessed-timing sources (YouTube Music lyrics, lyrics.ovh were removed); LRCLIB plain lyrics still get estimated timing. Japanese per-character word timings are regrouped into phrases in buildLines. Don't spoof headers or work around bot checks to reach other sources.
+- Lyrics: LRCLIB outages return { unavailable: true } with status 503 (never cached); the client retries every 20 s and keeps the last 150 songs' lyrics in localStorage (src/lib/lyrics/cache.ts, versioned prefix: bump it when source rules change).
+- Letter-by-letter animation must split with splitLetters() (src/templates/shared.ts), never [...text]: code points orphan Hindi vowel signs/viramas (dotted circles).
 - Lyric stage uses CSS container units (cqw/cqh), not vw/vh, so lyrics never run under the YouTube tile.
 - Load external artwork with referrerPolicy="no-referrer" (googleusercontent blocks some referrers).
 - Background visuals live in one WebGL shader (src/components/stage/AmbientBackground.tsx); don't add DOM shapes, blend modes, backdrop-filters or filters behind/over the lyrics. Words get cheap text-shadows only.

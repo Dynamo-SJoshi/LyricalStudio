@@ -117,7 +117,7 @@ export function HomeView() {
         <a href="https://github.com/arijit-debug/LyricalStudio" target="_blank" rel="noreferrer" className="hover:text-foreground">
           Source on GitHub
         </a>
-        {" · "}Lyrics from lrcmux and LRCLIB
+        {" · "}Lyrics from LRCLIB and lrcmux
       </p>
     </div>
   );

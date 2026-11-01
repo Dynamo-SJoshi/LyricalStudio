@@ -51,8 +51,7 @@ export default function PrivacyPage() {
         </p>
         <p className="mt-3">
           To find lyrics, artwork and genre, our server sends the song&apos;s title, artist, album and length (never
-          anything about you) to <A href="https://lrcmux.dev">lrcmux</A>, <A href="https://lrclib.net">LRCLIB</A>,{" "}
-          <A href="https://lyricsovh.docs.apiary.io">lyrics.ovh</A> and the{" "}
+          anything about you) to <A href="https://lrclib.net">LRCLIB</A>, <A href="https://lrcmux.dev">lrcmux</A> and the{" "}
           <A href="https://performance-partners.apple.com/search-api">iTunes Search API</A>.
         </p>
       </Section>
