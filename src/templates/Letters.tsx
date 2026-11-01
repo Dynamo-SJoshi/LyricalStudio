@@ -1,7 +1,7 @@
 "use client";
 
 import { KineticSpan } from "./kinetic";
-import { fitFont, groupRows, lyricShadow, rng, wordColor, type TemplateProps } from "./shared";
+import { fitFont, groupRows, lyricShadow, rng, splitLetters, wordColor, type TemplateProps } from "./shared";
 
 /** Each letter flips in on its own, staggered, like a split-flap board. */
 export function Letters({ line, revealed, palette, seed }: TemplateProps) {
@@ -21,7 +21,7 @@ export function Letters({ line, revealed, palette, seed }: TemplateProps) {
             const color = wordColor(line, i, palette, seed);
             return (
               <span key={i} data-fit="" className="inline-flex font-black tracking-tight" style={{ color, textShadow: lyricShadow(color) }}>
-                {[...w.text].map((ch, j) => (
+                {splitLetters(w.text).map((ch, j) => (
                   <KineticSpan
                     key={j}
                     shown={shown}

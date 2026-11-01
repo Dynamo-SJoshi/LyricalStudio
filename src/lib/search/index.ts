@@ -12,7 +12,7 @@ import {
  * Picks the search backend from the environment:
  * - YOUTUBE_API_KEY set: search uses the official YouTube Data API v3.
  * - YOUTUBEI_ENABLED=false: the unofficial YouTube Music client (youtubei.js) is never
- *   used. That turns off the YouTube Music home feed, playlists and YouTube Music lyrics.
+ *   used. That turns off the YouTube Music home feed and playlists.
  *   Recommended for public deployments.
  * With neither variable set, everything goes through youtubei.js (fine for running locally).
  */
@@ -70,8 +70,4 @@ export async function getHomeSections(): Promise<ytm.HomeSection[]> {
 
 export async function getPlaylistTracks(id: string): Promise<Track[]> {
   return youtubeiEnabled ? ytm.getPlaylistTracks(id) : [];
-}
-
-export async function getYouTubeLyrics(videoId: string) {
-  return youtubeiEnabled ? ytm.getYouTubeLyrics(videoId) : null;
 }

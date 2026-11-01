@@ -156,7 +156,7 @@ Restart `npm run dev` after editing `.env.local`. Git ignores this file, so your
 | Variable | What it does | Default |
 | --- | --- | --- |
 | `YOUTUBE_API_KEY` | Uses the official [YouTube Data API](https://developers.google.com/youtube/v3) for search. See [the next section](#getting-a-youtube-data-api-key). | Not set: search uses youtubei.js |
-| `YOUTUBEI_ENABLED` | Set to `false` to never use youtubei.js, the unofficial YouTube Music client. Turns off the YouTube Music home feed, playlists and YouTube Music lyrics. Recommended for public sites, together with `YOUTUBE_API_KEY`. | On |
+| `YOUTUBEI_ENABLED` | Set to `false` to never use youtubei.js, the unofficial YouTube Music client. Turns off the YouTube Music home feed and playlists. Recommended for public sites, together with `YOUTUBE_API_KEY`. | On |
 | `YOUTUBE_SEARCHES_PER_IP_PER_DAY` | How many official-API searches one visitor can trigger per day. Cached searches don't count. Stops one person from using up the whole site's quota. | `25` |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Shares the per-visitor rate limits across all server instances, using a free [Upstash](https://upstash.com) Redis database. | Each instance counts on its own |
 | `RATE_LIMIT` | Set to `off` to disable rate limiting. | On |
@@ -205,7 +205,7 @@ Browser                                    Server (Next.js API routes)
 ───────                                    ───────────────────────────
 Search box ──────────────────────────────▶ /api/search  → YouTube Data API or youtubei.js
 YouTube IFrame player (plays the song)
-Lyrics stage ◀── synced lyrics ─────────── /api/lyrics  → lrcmux → LRCLIB → (fallbacks)
+Lyrics stage ◀── synced lyrics ─────────── /api/lyrics  → LRCLIB (+ lrcmux word timing)
 Background colors ◀── artwork ──────────── /api/image   (artwork proxy for color extraction)
 Genre (picks styles) ◀─────────────────── /api/meta    → iTunes Search API
 Up next ◀────────────────────────────────── /api/radio
@@ -216,8 +216,8 @@ Likes, history, settings → browser localStorage (no database, no accounts)
 | --- | --- |
 | Playback | The official [YouTube IFrame Player API](https://developers.google.com/youtube/iframe_api_reference). The video tile always stays visible, as YouTube requires. |
 | Search | [YouTube Data API v3](https://developers.google.com/youtube/v3) when a key is set, otherwise [youtubei.js](https://github.com/LuanRT/YouTube.js) |
-| Synced lyrics | [lrcmux](https://lrcmux.dev) (word-synced where available), then [LRCLIB](https://lrclib.net) |
-| Fallback lyrics (plain text; timing estimated) | YouTube Music's lyrics (only when youtubei.js is on), then [lyrics.ovh](https://lyricsovh.docs.apiary.io) |
+| Synced lyrics | [LRCLIB](https://lrclib.net), the main source (line-by-line timing) |
+| Word-by-word timing | [lrcmux](https://lrcmux.dev), used only when its timing matches LRCLIB's |
 | Artwork and genre | [iTunes Search API](https://performance-partners.apple.com/search-api) |
 
 LyricalStudio never downloads, stores or redistributes audio.
@@ -274,7 +274,7 @@ Found a security problem? Please report it privately, as described in [SECURITY.
 
 ## Credits and license
 
-- Lyrics: [lrcmux](https://lrcmux.dev), [LRCLIB](https://lrclib.net) and [lyrics.ovh](https://lyricsovh.docs.apiary.io). Song lyrics belong to their writers and publishers.
+- Lyrics: [LRCLIB](https://lrclib.net) and [lrcmux](https://lrcmux.dev). Song lyrics belong to their writers and publishers.
 - Playback: [YouTube](https://www.youtube.com). Search: [YouTube Data API](https://developers.google.com/youtube/v3) and [youtubei.js](https://github.com/LuanRT/YouTube.js).
 - Artwork and genres: [iTunes Search API](https://performance-partners.apple.com/search-api).
 - Fonts: system fonts, with [Inter](https://rsms.me/inter/), [Noto Sans JP](https://fonts.google.com/noto/specimen/Noto+Sans+JP) and [Noto Sans Devanagari](https://fonts.google.com/noto/specimen/Noto+Sans+Devanagari).

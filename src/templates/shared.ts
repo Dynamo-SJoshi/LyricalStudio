@@ -122,6 +122,31 @@ export function highlightSet(line: LyricLine, seed: number): Set<number> {
 
 export const langAttr = (lang: LyricLine["lang"]) => (lang === "other" ? undefined : lang);
 
+const graphemes =
+  typeof Intl !== "undefined" && "Segmenter" in Intl ? new Intl.Segmenter(undefined, { granularity: "grapheme" }) : null;
+/** Devanagari-style viramas join the next consonant into a conjunct (e.g. म्म) */
+const VIRAMA = /[\u094D\u09CD\u0A4D\u0ACD\u0B4D\u0BCD\u0C4D\u0CCD\u0D4D]$/;
+/** zero-width (non-)joiners glue to the previous letter */
+const JOINER = /^[\u200C\u200D]/;
+
+/**
+ * Split a word into the units a reader sees as single letters, so animating them one by
+ * one never orphans a vowel sign, accent or virama (which browsers draw on a dotted
+ * circle). Hindi: each akshara (consonant cluster + its signs) stays together.
+ */
+export function splitLetters(word: string): string[] {
+  const clusters = graphemes
+    ? Array.from(graphemes.segment(word), (s) => s.segment)
+    : (word.match(/\P{M}\p{M}*/gu) ?? [word]);
+  const out: string[] = [];
+  for (const c of clusters) {
+    const prev = out.at(-1);
+    if (prev && (VIRAMA.test(prev) || JOINER.test(c))) out[out.length - 1] = prev + c;
+    else out.push(c);
+  }
+  return out;
+}
+
 /* ---------------------------------------------------------------------------
  * Liquid Glass glyphs. The gradient is computed here (not with CSS color-mix,
  * which the CSS build step "lowers" into opaque fallbacks) and handed to the

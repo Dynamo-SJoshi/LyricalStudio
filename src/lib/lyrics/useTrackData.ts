@@ -29,7 +29,6 @@ function load(track: Track): Promise<Loaded> {
     const q = new URLSearchParams({ title: track.title, artist: track.artist });
     if (track.album) q.set("album", track.album);
     if (track.durationSec) q.set("duration", String(track.durationSec));
-    q.set("videoId", track.videoId);
     const cached = readCachedLyrics(key);
     p = Promise.all([
       cached
