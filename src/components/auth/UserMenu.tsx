@@ -9,7 +9,7 @@ export function UserMenu() {
     return (
       <span
         className="glass rounded-full px-3 py-1.5 text-[12px] text-secondary"
-        title="Add Supabase keys to .env.local to turn on accounts. Likes are saved in this browser for now."
+        title="No account needed. Your likes and recently played songs are saved in this browser."
       >
         Guest mode
       </span>

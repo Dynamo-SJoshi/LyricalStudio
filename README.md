@@ -78,7 +78,7 @@ LyricalStudio is a standard Next.js app, so [Vercel](https://vercel.com) (or any
 2. Add the environment variables from [`.env.example`](.env.example). For a public site, set:
    - `YOUTUBE_API_KEY` and `YOUTUBEI_ENABLED=false`, so search uses the official YouTube Data API. The free quota is about 100 searches a day; results are cached.
    - `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`, so the per-IP rate limits on `/api/*` are shared across server instances.
-   - The Supabase keys, if you want accounts.
+   - The Supabase keys only if you want accounts. Leave them out and everyone uses the app as a guest, with likes and history saved in their browser.
 3. In Supabase, add your production URL under Authentication → URL Configuration.
 4. Update the contact details on the [privacy page](src/app/privacy/page.tsx) if you host your own copy.
 
