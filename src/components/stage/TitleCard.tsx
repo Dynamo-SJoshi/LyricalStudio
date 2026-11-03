@@ -10,11 +10,14 @@ export function TitleCard({
   track,
   palette,
   caption,
+  action,
   small,
 }: {
   track: Track;
   palette: Palette;
   caption?: string;
+  /** e.g. the "Show YouTube captions" button when a song has no lyrics */
+  action?: React.ReactNode;
   small?: boolean;
 }) {
   const words = track.title.split(/\s+/);
@@ -53,6 +56,11 @@ export function TitleCard({
         >
           {caption}
         </motion.p>
+      )}
+      {action && (
+        <motion.div className="mt-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }}>
+          {action}
+        </motion.div>
       )}
     </div>
   );

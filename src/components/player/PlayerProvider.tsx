@@ -3,8 +3,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { Track } from "@/lib/types";
 import { PlaybackClock } from "@/lib/clock/playback-clock";
-import { isUnplayableError, loadYouTubeApi, YTState, type YTPlayer } from "@/lib/youtube/iframe-api";
+import { isUnplayableError, loadYouTubeApi, YTState, type CaptionTrack, type YTPlayer } from "@/lib/youtube/iframe-api";
 import { pushRecent } from "@/lib/library/recent";
+
+/** YouTube's own captions, shown inside the video: "none" = this video has none. */
+export type CaptionsState = "off" | "on" | "none";
 
 export type PlayerStatus = "idle" | "loading" | "playing" | "paused" | "buffering" | "ended" | "error";
 
@@ -26,6 +29,9 @@ type PlayerContextValue = {
   setVolume: (v: number) => void;
   /** smoothed playback position in seconds (call every frame) */
   getTime: () => number;
+  captions: CaptionsState;
+  /** turn YouTube's captions on or off in the video (kept across songs until turned off) */
+  setCaptions: (on: boolean) => void;
   /** called by the visible YouTube tile to host the player */
   attachHost: (el: HTMLDivElement | null) => void;
 };
@@ -47,6 +53,10 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [duration, setDuration] = useState(0);
   const [volume, setVolumeState] = useState(80);
   const [error, setError] = useState<string | null>(null);
+  const [captions, setCaptionsState] = useState<CaptionsState>("off");
+  const captionsWanted = useRef(false);
+  /** captions were already applied to the current video */
+  const captionsApplied = useRef(false);
 
   const playerRef = useRef<YTPlayer | null>(null);
   const readyRef = useRef(false);
@@ -73,12 +83,76 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     return p && readyRef.current && typeof p.getCurrentTime === "function" ? p : null;
   }, []);
 
+  /**
+   * Apply the captions choice to the player. Captions are a player module: once it has
+   * loaded (onApiChange), pick a track, or report that the video has none.
+   */
+  const pickRef = useRef<(p: YTPlayer) => void>(() => {});
+  const applyCaptions = useCallback((p: YTPlayer) => {
+    try {
+      if (captionsWanted.current) {
+        p.loadModule?.("captions");
+        // videos without captions may never report the module: check the track list anyway
+        setTimeout(() => pickRef.current(p), 3000);
+      } else p.unloadModule?.("captions");
+      captionsApplied.current = true;
+    } catch {
+      // the player isn't ready for modules yet; the next PLAYING event retries
+    }
+  }, []);
+
+  const pickCaptionTrack = useCallback((p: YTPlayer) => {
+    if (!captionsWanted.current) return;
+    let tracks: CaptionTrack[] = [];
+    try {
+      tracks = (p.getOption?.("captions", "tracklist") as CaptionTrack[] | undefined) ?? [];
+    } catch {
+      return;
+    }
+    if (!tracks.length) {
+      // auto-generated captions often aren't in the list but are already showing
+      let showing: CaptionTrack | undefined;
+      try {
+        showing = p.getOption?.("captions", "track") as CaptionTrack | undefined;
+      } catch {}
+      setCaptionsState(showing?.languageCode ? "on" : "none");
+      return;
+    }
+    // prefer the reader's language, then English, then whatever the video has
+    const lang = (navigator.language || "en").slice(0, 2).toLowerCase();
+    const pick =
+      tracks.find((t) => t.languageCode?.toLowerCase().startsWith(lang) && t.kind !== "asr") ??
+      tracks.find((t) => t.languageCode?.toLowerCase().startsWith(lang)) ??
+      tracks.find((t) => t.languageCode?.toLowerCase().startsWith("en")) ??
+      tracks[0];
+    try {
+      p.setOption?.("captions", "track", { languageCode: pick.languageCode });
+    } catch {}
+    setCaptionsState("on");
+  }, []);
+
+  useEffect(() => {
+    pickRef.current = pickCaptionTrack;
+  }, [pickCaptionTrack]);
+
+  const setCaptions = useCallback(
+    (on: boolean) => {
+      captionsWanted.current = on;
+      setCaptionsState(on ? "on" : "off");
+      const p = api();
+      if (p) applyCaptions(p);
+    },
+    [api, applyCaptions],
+  );
+
   const load = useCallback(
     (videoId: string, durationHint?: number) => {
       clock.current.reset(0);
       setDuration(0);
       setStatus("loading");
       setError(null);
+      captionsApplied.current = false;
+      if (captionsWanted.current) setCaptionsState("on");
       const p = api();
       switchRef.current = { id: videoId, stale: p ? p.getCurrentTime() || 0 : 0, hint: durationHint, since: performance.now() };
       if (p) p.loadVideoById(videoId, 0);
@@ -242,10 +316,14 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   // the YouTube player's callbacks are created once, so they read the latest handlers via refs
   const tryAlternateRef = useRef(tryAlternate);
   const nextRef = useRef(next);
+  const applyCaptionsRef = useRef(applyCaptions);
+  const pickCaptionTrackRef = useRef(pickCaptionTrack);
   useEffect(() => {
     tryAlternateRef.current = tryAlternate;
     nextRef.current = next;
-  }, [tryAlternate, next]);
+    applyCaptionsRef.current = applyCaptions;
+    pickCaptionTrackRef.current = pickCaptionTrack;
+  }, [tryAlternate, next, applyCaptions, pickCaptionTrack]);
 
   // Exactly one player, ever. The host is recorded synchronously: React may attach the
   // same element twice (dev Strict Mode) before YouTube's script has loaded, which used
@@ -290,6 +368,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
               switch (e.data) {
                 case YTState.PLAYING:
                   setStatus("playing");
+                  // a new video starts without the captions module
+                  if (captionsWanted.current && !captionsApplied.current) applyCaptionsRef.current(p);
                   if (!switchRef.current) setDuration(p.getDuration());
                   break;
                 case YTState.PAUSED:
@@ -305,6 +385,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
                   break;
               }
             },
+            onApiChange: (e) => pickCaptionTrackRef.current(e.target),
             onError: (e) => {
               if (isUnplayableError(e.data)) void tryAlternateRef.current();
               else {
@@ -356,9 +437,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       seek,
       setVolume,
       getTime,
+      captions,
+      setCaptions,
       attachHost,
     }),
-    [queue, index, current, status, duration, volume, error, playQueue, playRadio, next, prev, toggle, seek, setVolume, getTime, attachHost],
+    [queue, index, current, status, duration, volume, error, playQueue, playRadio, next, prev, toggle, seek, setVolume, getTime, captions, setCaptions, attachHost],
   );
 
   return <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>;

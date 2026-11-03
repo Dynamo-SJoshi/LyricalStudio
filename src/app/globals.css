@@ -74,6 +74,31 @@ body {
 }
 
 
+/* ---------- Stage drift: the lyrics always float a little, so the stage never looks frozen.
+   Two nested layers with different periods (the path never visibly repeats). Translate and
+   a tiny rotation only (no scaling of text), on the compositor. ---------- */
+@keyframes ls-drift-a {
+  0% { transform: translate3d(-17px, 10px, 0); }
+  30% { transform: translate3d(9px, -12px, 0); }
+  65% { transform: translate3d(17px, 8px, 0); }
+  100% { transform: translate3d(-8px, -11px, 0); }
+}
+@keyframes ls-drift-b {
+  0% { transform: translate3d(-4px, -5px, 0) rotate(-0.5deg); }
+  50% { transform: translate3d(5px, 5px, 0) rotate(0.2deg); }
+  100% { transform: translate3d(-3px, -2px, 0) rotate(0.5deg); }
+}
+/* up to ~20 px and half a degree, slow: visible, but inside FitBox's 3-5% safe margins */
+.ls-drift { animation: ls-drift-a 12s ease-in-out infinite alternate; }
+.ls-drift-inner { animation: ls-drift-b 7s ease-in-out infinite alternate; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ls-drift,
+  .ls-drift-inner {
+    animation: none !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

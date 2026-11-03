@@ -38,9 +38,12 @@ Inspired by the [Cotodama Lyric Speaker](https://cotodama-speaker.com/). Not aff
 - **Search and play almost any song.** Playback goes through YouTube's official embedded player, shown as a small video tile.
 - **Lyrics that move with the music:** synced line by line, and word by word where the lyrics source has word timings.
 - **Seven text layouts:** Stack, Slide, Zoom, Letters, Scatter, Graph and Flow. "Auto style" picks one for each line from the song's genre, pace and chorus, or you can choose one yourself.
+- **Graph draws one continuous vine:** each new line grows out of the last one, the camera follows it, and the previous two lines linger above, dimmed and softly blurred. While Graph plays, the controls and cursor fade away after 3 seconds without input (move the mouse to bring them back); the video tile stays visible and moves down into the corner.
+- **Always gently in motion:** the lyrics float a little all the time, even between words and during instrumental parts.
+- **YouTube captions for songs without lyrics:** when no lyrics are found, a button turns on the video's own captions (when YouTube has them), and the video grows so they're readable.
 - **Colors from the album art:** white lyrics with vivid highlights on a few words per line, picked at random every time the song plays.
 - **A flowing "liquid glass" background** drawn on the GPU (WebGL), with ripples from each word as it's sung.
-- **Smooth, crisp motion:** springy word entrances and motion blur. Text stays sharp once it settles, and lines always fit on screen.
+- **Smooth, crisp motion:** springy word entrances and motion blur. Text stays sharp once it settles, and lines always fit on screen. Animations run on the GPU, and on slower computers a lighter mode switches on by itself so motion stays smooth.
 - **English, Japanese (日本語) and Hindi (हिन्दी),** with romanized lines shown as subtitles when the source has them.
 - **Up next:** related songs line up automatically and keep playing when your queue ends.
 - **Home screen:** recently played songs, liked songs and "Made for you" suggestions.
@@ -240,6 +243,7 @@ LyricalStudio never downloads, stores or redistributes audio.
 - **Search quota (official API only):** the free 10,000 units a day buys about 100 new searches a day for the whole site. Repeated searches come from a cache. After the quota runs out, search shows a message until the next day (midnight Pacific time). To share it fairly, each visitor can trigger up to 25 of those searches a day (`YOUTUBE_SEARCHES_PER_IP_PER_DAY`).
 - **Some songs won't play** because the label blocks embedding. LyricalStudio tries another upload of the same song, then skips it.
 - **YouTube may show ads** before songs, as in any embedded YouTube player.
+- **Captions depend on YouTube.** Many videos have none, and auto-generated ones can be wrong.
 - **Lyrics aren't guaranteed.** They come from free community services, so some songs have none, only approximate timing, or mistakes. When a service is down, recently played songs still have lyrics from the browser cache.
 - **The tab must stay open** for music to play. There's no background or offline playback.
 - **Desktop-first.** Phones work, but the layout is made for larger screens.

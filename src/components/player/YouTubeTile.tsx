@@ -6,13 +6,18 @@ import { usePlayer } from "./PlayerProvider";
  * The YouTube player. YouTube's API policy requires it to stay visible and uncovered
  * (at least 200x200) while playing, so it can grow ("pop out") but never hide.
  * Nothing is ever drawn on top of it.
+ *
+ * lowered: the control bar is hidden (immersive mode), so the tile glides down into the
+ * space the bar leaves (it stays fully visible; only its position changes).
  */
-export function YouTubeTile({ big, onShrink }: { big: boolean; onShrink: () => void }) {
+export function YouTubeTile({ big, onShrink, lowered = false }: { big: boolean; onShrink: () => void; lowered?: boolean }) {
   const { attachHost, current, error } = usePlayer();
 
   return (
     <div
-      className={`fixed right-6 bottom-[112px] z-40 flex flex-col items-end gap-2 transition-opacity duration-500 ${current ? "opacity-100" : "pointer-events-none opacity-0"}`}
+      className={`fixed right-6 bottom-[112px] z-40 flex flex-col items-end gap-2 transition-[opacity,translate] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${current ? "opacity-100" : "pointer-events-none opacity-0"}`}
+      // 112px - 92px = 20px from the bottom, the control bar's own margin
+      style={{ translate: lowered ? "0 92px" : "0 0" }}
     >
       {big && (
         <button
