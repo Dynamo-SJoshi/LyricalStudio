@@ -24,9 +24,13 @@ const notoDevanagari = Noto_Sans_Devanagari({
 });
 
 export const metadata: Metadata = {
+  // share images (opengraph-image.png) need absolute URLs
+  metadataBase: new URL("https://lyricalstudio.vercel.app"),
   title: "LyricalStudio",
   description:
     "An open-source music player with kinetic lyric animations, inspired by the Cotodama Lyric Speaker.",
+  // show the share image large on X (the image itself comes from opengraph-image.png)
+  twitter: { card: "summary_large_image" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
