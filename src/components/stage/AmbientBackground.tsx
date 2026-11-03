@@ -139,6 +139,9 @@ const withAlpha = (c: string, a: number) => {
   return `rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, ${a})`;
 };
 
+/** Background frame cap (~60 fps, with slack for frame-time jitter), ms. */
+const MIN_FRAME_MS = 1000 / 60 - 2;
+
 export function AmbientBackground({ palette, artwork }: { palette: Palette; artwork?: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [failed, setFailed] = useState(false);
@@ -250,13 +253,16 @@ export function AmbientBackground({ palette, artwork }: { palette: Palette; artw
 
     const colors = target.current.colors.map((c) => [...c]);
     let raf = 0;
-    let last = performance.now();
+    let last = 0;
     let slowFrames = 0;
     let frames = 0;
     const frame = () => {
       raf = requestAnimationFrame(frame);
       if (document.hidden) return;
       const t = performance.now();
+      // the background moves slowly: 60 fps is plenty, and on 120/240 Hz screens drawing
+      // it every refresh would spend GPU time the lyrics need
+      if (t - last < MIN_FRAME_MS) return;
       const dt = Math.min(0.1, (t - last) / 1000);
       last = t;
 

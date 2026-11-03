@@ -5,7 +5,7 @@ import { motion, useReducedMotionConfig } from "motion/react";
 import { animateTo, resolveTiming } from "./waapi";
 import { useElementSize } from "@/lib/useElementSize";
 import type { LyricWord } from "@/lib/types";
-import { LABEL, lyricShadow, visualLength, vivid, wordColor, type TemplateProps } from "./shared";
+import { LABEL, lyricShadow, rng, visualLength, vivid, wordColor, type TemplateProps } from "./shared";
 
 /**
  * A lyric tree. Meaningful words ("HEART", "BELONGS", "YOU") form the trunk, joined
@@ -33,8 +33,9 @@ function isLeaf(words: LyricWord[], i: number) {
   return SMALL_WORDS.has(t) || (t.length <= 2 && /^[a-z']+$/.test(t));
 }
 
-type Node = { x: number; y: number; font: number; leaf: boolean; parent: number };
-type Box = { l: number; t: number; r: number; b: number };
+export type TreeNode = { x: number; y: number; font: number; leaf: boolean; parent: number };
+type Node = TreeNode;
+export type Box = { l: number; t: number; r: number; b: number };
 
 /** Rendered width of a label in px (visualLength already estimates uppercase). */
 const labelWidth = (text: string, font: number) => visualLength(text) * font;
@@ -43,7 +44,12 @@ const labelWidth = (text: string, font: number) => visualLength(text) * font;
  * Lay the tree out in rows no wider than `rowWidth`: the trunk flows left to right on a
  * gentle wave and wraps down to the next row, like a branch. Leaves hang below their word.
  */
-function layout(words: LyricWord[], W: number, H: number, seed: number, rowWidth: number) {
+function layout(words: LyricWord[], W: number, H: number, seed: number, rowWidth: number, organic = false) {
+  // organic (the continuous graph): word heights wander at random instead of following a
+  // regular wave, and the spacing varies; same seed, same shape
+  const wander = rng(seed ^ 0x2545f491);
+  const ampScale = organic ? 0.55 + wander() * 0.45 : 1;
+  let walk = organic ? (wander() * 2 - 1) * 0.8 : 0;
   const trunkFont = Math.min(H * 0.13, W * 0.075);
   const leafFont = trunkFont * 0.42;
   const gap = W * 0.05;
@@ -84,7 +90,8 @@ function layout(words: LyricWord[], W: number, H: number, seed: number, rowWidth
     if (prevTrunk < 0) x = lw;
     else {
       const prevWidth = labelWidth(words[prevTrunk].text, nodes[prevTrunk].font) + 10;
-      const next = x + Math.max(prevWidth + gap, lw + gap);
+      const g = organic ? gap * (0.6 + wander() * 1.1) : gap;
+      const next = x + Math.max(prevWidth + g, lw + g);
       if (inRow > 0 && next + labelWidth(words[i].text, nodes[i].font) + 10 > rowWidth) {
         row++;
         inRow = 0;
@@ -92,7 +99,8 @@ function layout(words: LyricWord[], W: number, H: number, seed: number, rowWidth
       } else x = next;
     }
     nodes[i].x = x;
-    nodes[i].y = row * rowStep + amp * Math.sin(k * 1.25 + phase);
+    if (organic && k > 0) walk = Math.max(-1, Math.min(1, walk + (wander() * 2 - 1) * 1.1));
+    nodes[i].y = row * rowStep + (organic ? amp * ampScale * walk : amp * Math.sin(k * 1.25 + phase));
     prevTrunk = i;
     k++;
     inRow++;
@@ -127,7 +135,7 @@ function layout(words: LyricWord[], W: number, H: number, seed: number, rowWidth
   return { nodes, box, rows: row + 1 };
 }
 
-function trunkPath(a: Node, b: Node) {
+export function trunkPath(a: Node, b: Node) {
   if (b.y - a.y > Math.abs(b.x - a.x) * 0.2 && b.x < a.x) {
     // wrapping to the next row: swing down and back like a branch
     const midY = (a.y + b.y) / 2;
@@ -137,8 +145,25 @@ function trunkPath(a: Node, b: Node) {
   return `M ${a.x} ${a.y} C ${a.x + dx} ${a.y}, ${b.x - dx} ${b.y}, ${b.x} ${b.y}`;
 }
 
-const SAFE_X = 0.05;
-const SAFE_Y = 0.08;
+export const SAFE_X = 0.05;
+export const SAFE_Y = 0.08;
+
+/**
+ * The tree for one line at the scale that shows the biggest type: tries a single row and
+ * progressively more wrapping. `s` (<= 1) scales the layout to fit the safe area
+ * (or `heightShare` of its height).
+ */
+export function fitTree(words: LyricWord[], W: number, H: number, seed: number, heightShare = 1, organic = false) {
+  const availW = W * (1 - 2 * SAFE_X);
+  const availH = H * (1 - 2 * SAFE_Y) * heightShare;
+  let best: (ReturnType<typeof layout> & { s: number }) | null = null;
+  for (const f of [Infinity, 2.2, 1.7, 1.35, 1.05, 0.8]) {
+    const l = layout(words, W, H, seed, availW * f, organic);
+    const s = Math.min(1, availW / (l.box.r - l.box.l), availH / (l.box.b - l.box.t));
+    if (!best || s > best.s + 0.02 || (Math.abs(s - best.s) <= 0.02 && l.rows < best.rows)) best = { ...l, s };
+  }
+  return best!;
+}
 
 export function Graph({ line, revealed, palette, seed }: TemplateProps) {
   const [ref, { width: W, height: H }] = useElementSize<HTMLDivElement>();
@@ -147,15 +172,7 @@ export function Graph({ line, revealed, palette, seed }: TemplateProps) {
   const availW = W * (1 - 2 * SAFE_X);
   const availH = H * (1 - 2 * SAFE_Y);
 
-  // try a single row and progressively more wrapping; keep whichever shows the biggest type
-  let best: (ReturnType<typeof layout> & { s: number }) | null = null;
-  if (ready) {
-    for (const f of [Infinity, 2.2, 1.7, 1.35, 1.05, 0.8]) {
-      const l = layout(line.words, W, H, seed, availW * f);
-      const s = Math.min(1, availW / (l.box.r - l.box.l), availH / (l.box.b - l.box.t));
-      if (!best || s > best.s + 0.02 || (Math.abs(s - best.s) <= 0.02 && l.rows < best.rows)) best = { ...l, s };
-    }
-  }
+  const best = ready ? fitTree(line.words, W, H, seed) : null;
   const nodes = best?.nodes ?? [];
   const s = best?.s ?? 1;
   const box = best?.box ?? { l: 0, t: 0, r: 0, b: 0 };

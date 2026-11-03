@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotionConfig } from "motion/react";
 import { springTiming } from "@/templates/waapi";
 import type { LyricLine, Track } from "@/lib/types";
@@ -8,8 +8,10 @@ import type { Palette } from "@/lib/theme/palette";
 import { hashString } from "@/lib/theme/palette";
 import { detectLang, lineAt } from "@/lib/lyrics/parse";
 import type { LyricsStatus } from "@/lib/lyrics/useTrackData";
-import { chooseScene, TEMPLATES, type Scene, type TemplateChoice } from "@/templates";
+import type { CaptionsState } from "@/components/player/PlayerProvider";
+import { chooseScene, isGraph, TEMPLATES, type Scene, type TemplateChoice } from "@/templates";
 import { FitBox } from "@/templates/FitBox";
+import { GraphStream } from "@/templates/GraphStream";
 import { langAttr } from "@/templates/shared";
 import { TitleCard } from "./TitleCard";
 
@@ -34,9 +36,12 @@ type Props = {
   offset: number;
   template: TemplateChoice;
   getTime: () => number;
+  /** YouTube's captions in the video, offered when a song has no lyrics */
+  captions?: CaptionsState;
+  onCaptions?: (on: boolean) => void;
 };
 
-export function LyricsStage({ track, lines, status, palette, seed, genre, lyricsCredit, offset, template, getTime }: Props) {
+export function LyricsStage({ track, lines, status, palette, seed, genre, lyricsCredit, offset, template, getTime, captions = "off", onCaptions }: Props) {
   const [pos, setPos] = useState<Position>({ mode: "intro", line: -1, revealed: 0 });
   const posRef = useRef(pos);
 
@@ -96,6 +101,10 @@ export function LyricsStage({ track, lines, status, palette, seed, genre, lyrics
     return () => cancelAnimationFrame(id);
   }, [pos, lines]);
 
+  // every line's scene, so runs of consecutive graph lines can share one drawing
+  const forced = template === "auto" ? undefined : template;
+  const scenes = useMemo(() => lines.map((l) => chooseScene(l, seed, genre, forced)), [lines, seed, genre, forced]);
+
   const noLyrics = status !== "synced" && status !== "unsynced";
   const caption =
     status === "loading"
@@ -105,18 +114,38 @@ export function LyricsStage({ track, lines, status, palette, seed, genre, lyrics
         : status === "unavailable"
           ? "The lyrics service is busy right now. Retrying…"
           : status === "none"
-          ? "No lyrics found for this song"
+          ? captions === "on"
+            ? "No lyrics found · showing YouTube's captions in the video"
+            : captions === "none"
+              ? "No lyrics found, and this video has no captions"
+              : "No lyrics found for this song"
           : status === "unsynced"
             ? `Timing is estimated for this song${lyricsCredit ? ` · lyrics from ${lyricsCredit}` : ""}`
             : undefined;
 
   let content: React.ReactNode;
   let key: string;
+  let unclipped = false;
   if (noLyrics || pos.mode === "intro" || pos.mode === "outro") {
     key = noLyrics ? `title-${status}` : pos.mode;
     content = (
       <FitBox>
-        <TitleCard track={track} palette={palette} caption={noLyrics ? caption : undefined} small={pos.mode === "outro"} />
+        <TitleCard
+          track={track}
+          palette={palette}
+          caption={noLyrics ? caption : undefined}
+          action={
+            status === "none" && onCaptions && captions !== "none" ? (
+              <button
+                onClick={() => onCaptions(captions !== "on")}
+                className="glass rounded-full px-4 py-2 text-sm font-medium transition hover:bg-white/15"
+              >
+                {captions === "on" ? "Hide captions" : "Show YouTube captions"}
+              </button>
+            ) : undefined
+          }
+          small={pos.mode === "outro"}
+        />
       </FitBox>
     );
   } else if (pos.mode === "gap") {
@@ -127,6 +156,25 @@ export function LyricsStage({ track, lines, status, palette, seed, genre, lyrics
         <TitleCard track={track} palette={palette} small />
       </FitBox>
     );
+  } else if (isGraph(scenes[pos.line]?.template)) {
+    // graph lines that follow each other without an instrumental break form one run:
+    // one continuous drawing that keeps growing instead of restarting every line
+    const kind = scenes[pos.line].template;
+    const joined = (a: number) => scenes[a]?.template === kind && scenes[a + 1]?.template === kind && lines[a].end >= lines[a + 1].start - 0.05;
+    let from = pos.line;
+    while (from > 0 && joined(from - 1)) from--;
+    let to = pos.line;
+    while (to < lines.length - 1 && joined(to)) to++;
+    const line = lines[pos.line];
+    key = `${kind}-${from}`;
+    // the graph draws on a canvas that covers the whole window
+    unclipped = true;
+    content = (
+      <div className="absolute inset-0 flex items-center justify-center uppercase">
+        <GraphStream lines={lines} from={from} to={to} current={pos.line} revealed={pos.revealed} palette={palette} seed={seed} />
+        {line.sub && <Subtitle key={pos.line} text={line.sub} />}
+      </div>
+    );
   } else {
     const line = lines[pos.line];
     const lineSeed = (seed ^ hashString(line.text)) >>> 0;
@@ -135,38 +183,49 @@ export function LyricsStage({ track, lines, status, palette, seed, genre, lyrics
     content = (
       <div data-line={pos.line} lang={langAttr(line.lang)} className="absolute inset-0 flex items-center justify-center uppercase">
         <LineText line={line} scene={scene} revealed={pos.revealed} palette={palette} seed={lineSeed} />
-        {line.sub && (
-          <motion.p
-            lang={langAttr(detectLang(line.sub))}
-            className="absolute bottom-[2cqh] max-w-[80cqw] text-center text-[clamp(15px,1.5cqw,22px)] font-medium normal-case text-secondary"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-          >
-            {line.sub}
-          </motion.p>
-        )}
+        {line.sub && <Subtitle text={line.sub} />}
       </div>
     );
   }
 
   return (
-    <div ref={rootRef} className="relative h-full w-full overflow-hidden" aria-live="off">
-      <AnimatePresence initial={false}>
-        <motion.div
-          key={key}
-          className="absolute inset-0 flex items-center justify-center"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1, transition: { duration: 0.35, ease: [0.25, 0.1, 0.25, 1] } }}
-          exit={{ opacity: 0, transition: { duration: 0.3, ease: [0.4, 0, 0.2, 1] } }}
-        >
-          {content}
-        </motion.div>
-      </AnimatePresence>
+    <div ref={rootRef} className={`relative h-full w-full ${unclipped ? "" : "overflow-hidden"}`} aria-live="off">
+      {/* a constant, subtle drift (globals.css), outside the per-line cross-fade so it
+          flows on across line changes instead of restarting */}
+      <div className="ls-drift absolute inset-0">
+        <div className="ls-drift-inner absolute inset-0">
+          <AnimatePresence initial={false}>
+            <motion.div
+              key={key}
+              className="absolute inset-0 flex items-center justify-center"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1, transition: { duration: 0.35, ease: [0.25, 0.1, 0.25, 1] } }}
+              exit={{ opacity: 0, transition: { duration: 0.3, ease: [0.4, 0, 0.2, 1] } }}
+            >
+              {content}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </div>
       {status === "unsynced" && (
         <p className="absolute top-2 left-1/2 -translate-x-1/2 text-sm text-secondary">{caption}</p>
       )}
     </div>
+  );
+}
+
+/** Romanization or translation under a line. */
+function Subtitle({ text }: { text: string }) {
+  return (
+    <motion.p
+      lang={langAttr(detectLang(text))}
+      className="absolute bottom-[2cqh] max-w-[80cqw] text-center text-[clamp(15px,1.5cqw,22px)] font-medium normal-case text-secondary"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.15 }}
+    >
+      {text}
+    </motion.p>
   );
 }
 
@@ -205,7 +264,7 @@ export function LineText({
   return (
     <div ref={camRef} className="absolute inset-0 flex items-center justify-center">
       {/* the graph frames itself (it shrinks to fit, and pans only for very long lines) */}
-      <FitBox disabled={scene.template === "graph"} tilt={scene.tilt * 1.3} zoom={CAMERA_ZOOM} insets={line.sub ? { bottom: 0.16 } : undefined}>
+      <FitBox disabled={isGraph(scene.template)} tilt={scene.tilt * 1.3} zoom={CAMERA_ZOOM} insets={line.sub ? { bottom: 0.16 } : undefined}>
         <Template line={line} revealed={revealed} palette={palette} seed={seed} />
       </FitBox>
     </div>

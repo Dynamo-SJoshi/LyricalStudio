@@ -23,6 +23,9 @@ export const TEMPLATES = {
 export type TemplateId = keyof typeof TEMPLATES;
 export type TemplateChoice = TemplateId | "auto";
 
+/** Graph draws continuously across lines and frames itself (no FitBox, no tilt). */
+export const isGraph = (t?: TemplateId) => t === "graph";
+
 /** Everything that makes up one line's visual: layout and camera. */
 export type Scene = {
   template: TemplateId;
@@ -72,7 +75,7 @@ export function chooseScene(line: LyricLine, songSeed: number, genre?: string, f
       ["flow", calm ? 2 : 0.5],
     ]);
 
-  const tilt = template === "graph" || r() > 0.32 ? 0 : (r() - 0.5) * 7;
+  const tilt = isGraph(template) || r() > 0.32 ? 0 : (r() - 0.5) * 7;
 
   return { template, tilt };
 }

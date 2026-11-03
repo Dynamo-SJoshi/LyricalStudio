@@ -14,7 +14,14 @@ export type YTPlayer = {
   mute(): void;
   unMute(): void;
   destroy(): void;
+  /** player modules (captions): part of the IFrame API, though not in its main reference */
+  loadModule?(name: "captions"): void;
+  unloadModule?(name: "captions"): void;
+  setOption?(module: "captions", option: string, value: unknown): void;
+  getOption?(module: "captions", option: string): unknown;
 };
+
+export type CaptionTrack = { languageCode: string; displayName?: string; kind?: string };
 
 export const YTState = {
   UNSTARTED: -1,
@@ -37,6 +44,8 @@ type YTNamespace = {
         onReady?: (e: { target: YTPlayer }) => void;
         onStateChange?: (e: { data: number; target: YTPlayer }) => void;
         onError?: (e: { data: number; target: YTPlayer }) => void;
+        /** fires when a module (e.g. captions) has loaded */
+        onApiChange?: (e: { target: YTPlayer }) => void;
       };
     },
   ) => YTPlayer;

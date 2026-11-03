@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { MotionConfig } from "motion/react";
 import { PlayerProvider, usePlayer } from "@/components/player/PlayerProvider";
 import { ControlBar } from "@/components/player/ControlBar";
@@ -18,6 +18,9 @@ import { readOffset, writeOffset } from "@/lib/library/recent";
 import { useTrackData } from "@/lib/lyrics/useTrackData";
 import { TEMPLATES, type TemplateChoice } from "@/templates";
 
+/** Idle time before immersive mode hides the controls, ms. */
+const IMMERSIVE_IDLE_MS = 3000;
+
 export function AppShell() {
   return (
     // honors the OS "reduce motion" setting for every animation
@@ -33,7 +36,7 @@ export function AppShell() {
 }
 
 function Studio() {
-  const { current, duration, getTime, toggle, seek } = usePlayer();
+  const { current, duration, status, getTime, toggle, seek, captions, setCaptions } = usePlayer();
   const data = useTrackData(current, duration);
   const [template, setTemplateState] = useState<TemplateChoice>("auto");
   const [offset, setOffsetState] = useState(0);
@@ -50,6 +53,32 @@ function Studio() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (current) setView("lyrics");
   }, [current?.videoId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // YouTube captions for songs without lyrics: once turned on, they stay on for every
+  // such song (and the video grows so they're readable) until turned off
+  const [captionsPref, setCaptionsPref] = useState(false);
+  const captionsGrewVideo = useRef(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCaptionsPref(localStorage.getItem("ls:captions") === "on");
+  }, []);
+  const lyricsStatus = data.status;
+  useEffect(() => {
+    if (!current || lyricsStatus === "loading") return;
+    const want = captionsPref && lyricsStatus === "none";
+    setCaptions(want);
+    if (want && !captionsGrewVideo.current) {
+      captionsGrewVideo.current = true;
+      setVideoBig(true);
+    } else if (!want && captionsGrewVideo.current) {
+      captionsGrewVideo.current = false;
+      setVideoBig(false);
+    }
+  }, [captionsPref, lyricsStatus, current?.videoId, setCaptions]); // eslint-disable-line react-hooks/exhaustive-deps
+  const toggleCaptions = useCallback((on: boolean) => {
+    setCaptionsPref(on);
+    localStorage.setItem("ls:captions", on ? "on" : "off");
+  }, []);
 
   // restore preferences after mount (localStorage isn't available during prerender)
   useEffect(() => {
@@ -75,6 +104,43 @@ function Studio() {
     [current],
   );
 
+  // Immersive mode (Graph styles, while playing): after a few idle seconds the header,
+  // control bar and cursor fade away so the lyrics own the screen. Any mouse movement,
+  // click, scroll or key brings them back. The YouTube tile always stays visible.
+  const immersive = view === "lyrics" && !!current && status === "playing" && template === "graph";
+  const [idle, setIdle] = useState(false);
+  useEffect(() => {
+    if (!immersive) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setIdle(false);
+      return;
+    }
+    let timer: ReturnType<typeof setTimeout>;
+    const typing = () => {
+      const el = document.activeElement;
+      return el instanceof HTMLInputElement || el instanceof HTMLSelectElement || el instanceof HTMLTextAreaElement;
+    };
+    const wake = () => {
+      setIdle(false);
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (!typing()) setIdle(true);
+      }, IMMERSIVE_IDLE_MS);
+    };
+    wake();
+    const events = ["pointermove", "pointerdown", "wheel", "keydown"] as const;
+    events.forEach((e) => window.addEventListener(e, wake, { passive: true }));
+    return () => {
+      clearTimeout(timer);
+      events.forEach((e) => window.removeEventListener(e, wake));
+    };
+  }, [immersive]);
+  const hideChrome = immersive && idle;
+  useEffect(() => {
+    document.documentElement.style.cursor = hideChrome ? "none" : "";
+  }, [hideChrome]);
+  const chrome = `transition-opacity duration-700 ${hideChrome ? "pointer-events-none opacity-0" : "opacity-100"}`;
+
   // keyboard shortcuts
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -99,7 +165,7 @@ function Studio() {
       <AmbientBackground palette={data.palette} artwork={data.artwork} />
       <FpsMeter />
 
-      <header className="fixed inset-x-0 top-0 z-30 flex items-center justify-between gap-4 px-6 pt-5">
+      <header className={`fixed inset-x-0 top-0 z-30 flex items-center justify-between gap-4 px-6 pt-5 ${chrome}`}>
         <div className="flex w-[260px] items-center gap-3">
           <button onClick={() => setView("home")} className="text-lg font-black tracking-tight" title="Home">
             LyricalStudio
@@ -121,7 +187,10 @@ function Studio() {
       </header>
 
       {/* lyrics stage: sized with container units so lyrics never run under the video tile */}
-      <main className={`fixed top-[76px] bottom-[120px] left-6 z-10 ${view === "home" || !current ? "right-6" : "right-[248px]"}`} style={{ containerType: "size" }}>
+      <main
+        className={`fixed top-[76px] bottom-[120px] left-6 z-10 ${view === "home" || !current ? "right-6" : videoBig ? "right-[calc(min(720px,58vw)+60px)]" : "right-[248px]"}`}
+        style={{ containerType: "size" }}
+      >
         {view === "home" || !current ? (
           <HomeView />
         ) : (
@@ -136,13 +205,15 @@ function Studio() {
             offset={offset}
             template={template}
             getTime={getTime}
+            captions={captions}
+            onCaptions={toggleCaptions}
           />
         )}
       </main>
 
-      <YouTubeTile big={videoBig} onShrink={() => setVideoBig(false)} />
+      <YouTubeTile big={videoBig} onShrink={() => setVideoBig(false)} lowered={hideChrome} />
 
-      <footer className="fixed inset-x-6 bottom-5 z-30">
+      <footer className={`fixed inset-x-6 bottom-5 z-30 ${chrome}`}>
         <ControlBar offset={offset} onOffset={setOffset} template={template} onTemplate={setTemplate} />
       </footer>
     </>
