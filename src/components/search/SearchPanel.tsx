@@ -10,7 +10,7 @@ import { formatTime } from "@/lib/format";
 
 /** Spotlight-style search field with results, likes and recently played. */
 export function SearchPanel() {
-  const { playQueue, playRadio, current } = usePlayer();
+  const { playQueue, playRadio, playNext, current } = usePlayer();
   const { likes } = useLikes();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -121,7 +121,13 @@ export function SearchPanel() {
                 {!loading && !error && results.length === 0 && <Empty>No songs found.</Empty>}
                 {results.map((t) => (
                   // a searched song plays with a radio of related songs after it
-                  <Row key={t.videoId} track={t} onClick={() => playOne(t)} active={current?.videoId === t.videoId} />
+                  <Row
+                    key={t.videoId}
+                    track={t}
+                    onClick={() => playOne(t)}
+                    onPlayNext={() => playNext(t)}
+                    active={current?.videoId === t.videoId}
+                  />
                 ))}
               </Section>
             ) : (
@@ -129,13 +135,25 @@ export function SearchPanel() {
                 <Section title="Liked songs">
                   {likes.length === 0 && <Empty>Tap the heart while a song plays to save it here.</Empty>}
                   {likes.slice(0, 8).map((t, i) => (
-                    <Row key={t.videoId} track={t} onClick={() => play(likes, i)} active={current?.videoId === t.videoId} />
+                    <Row
+                      key={t.videoId}
+                      track={t}
+                      onClick={() => play(likes, i)}
+                      onPlayNext={() => playNext(t)}
+                      active={current?.videoId === t.videoId}
+                    />
                   ))}
                 </Section>
                 {recent.length > 0 && (
                   <Section title="Recently played">
                     {recent.slice(0, 8).map((t, i) => (
-                      <Row key={t.videoId} track={t} onClick={() => play(recent, i)} active={current?.videoId === t.videoId} />
+                      <Row
+                        key={t.videoId}
+                        track={t}
+                        onClick={() => play(recent, i)}
+                        onPlayNext={() => playNext(t)}
+                        active={current?.videoId === t.videoId}
+                      />
                     ))}
                   </Section>
                 )}
@@ -161,27 +179,62 @@ function Empty({ children }: { children: React.ReactNode }) {
   return <p className="px-3 py-2 text-sm text-secondary">{children}</p>;
 }
 
-function Row({ track, onClick, active }: { track: Track; onClick: () => void; active: boolean }) {
+function Row({
+  track,
+  onClick,
+  onPlayNext,
+  active,
+}: {
+  track: Track;
+  onClick: () => void;
+  onPlayNext?: () => void;
+  active: boolean;
+}) {
   return (
-    <button
-      onClick={onClick}
-      className={`flex w-full items-center gap-3 rounded-2xl px-2 py-1.5 text-left transition-colors hover:bg-white/10 ${active ? "bg-white/10" : ""}`}
+    <div
+      className={`group flex w-full items-center gap-3 rounded-2xl px-2 py-1.5 transition-colors hover:bg-white/10 ${
+        active ? "bg-white/10" : ""
+      }`}
     >
-      {track.artwork ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={track.artwork} alt="" referrerPolicy="no-referrer" className="size-11 shrink-0 rounded-lg object-cover" loading="lazy" />
-      ) : (
-        <div className="size-11 shrink-0 rounded-lg bg-white/10" />
+      <button onClick={onClick} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+        {track.artwork ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={track.artwork} alt="" referrerPolicy="no-referrer" className="size-11 shrink-0 rounded-lg object-cover" loading="lazy" />
+        ) : (
+          <div className="size-11 shrink-0 rounded-lg bg-white/10" />
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[15px] font-medium">{track.title}</p>
+          <p className="truncate text-[13px] text-secondary">
+            {track.artist}
+            {track.album ? ` · ${track.album}` : ""}
+          </p>
+        </div>
+        {track.durationSec ? <span className="text-[13px] text-secondary tabular-nums">{formatTime(track.durationSec)}</span> : null}
+      </button>
+      {onPlayNext && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onPlayNext();
+          }}
+          title="Play next"
+          aria-label={`Play ${track.title} next`}
+          className="glass hidden size-8 shrink-0 items-center justify-center rounded-full text-secondary opacity-0 transition group-hover:opacity-100 hover:text-foreground md:flex"
+        >
+          <PlayNextIcon />
+        </button>
       )}
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[15px] font-medium">{track.title}</p>
-        <p className="truncate text-[13px] text-secondary">
-          {track.artist}
-          {track.album ? ` · ${track.album}` : ""}
-        </p>
-      </div>
-      {track.durationSec ? <span className="text-[13px] text-secondary tabular-nums">{formatTime(track.durationSec)}</span> : null}
-    </button>
+    </div>
+  );
+}
+
+function PlayNextIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m11 5 7 7-7 7" />
+      <path d="M4 4v16" />
+    </svg>
   );
 }
 

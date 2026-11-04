@@ -37,7 +37,7 @@ export function AppShell() {
 }
 
 function Studio() {
-  const { current, duration, status, getTime, toggle, seek, captions, setCaptions } = usePlayer();
+  const { current, duration, status, getTime, toggle, seek, captions, setCaptions, toggleLoop } = usePlayer();
   const data = useTrackData(current, duration);
   const [template, setTemplateState] = useState<TemplateChoice>("auto");
   const [offset, setOffsetState] = useState(0);
@@ -155,11 +155,12 @@ function Studio() {
       else if (e.key === "ArrowLeft") seek(getTime() - 5);
       else if (e.key === "[") setOffset(offset - 0.25);
       else if (e.key === "]") setOffset(offset + 0.25);
+      else if (e.key === "l" || e.key === "L") toggleLoop();
       else if (e.key === "Escape") setVideoBig(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [toggle, seek, getTime, offset, setOffset]);
+  }, [toggle, seek, getTime, offset, setOffset, toggleLoop]);
 
   return (
     <>

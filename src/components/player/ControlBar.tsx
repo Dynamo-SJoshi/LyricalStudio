@@ -15,7 +15,7 @@ type Props = {
 
 /** Floating glass control bar: track info, transport, progress, sync offset, style, volume. */
 export function ControlBar({ offset, onOffset, template, onTemplate }: Props) {
-  const { current, status, duration, volume, toggle, next, prev, seek, setVolume, getTime, queue, index } = usePlayer();
+  const { current, status, duration, volume, toggle, next, prev, seek, setVolume, getTime, queue, index, loop, toggleLoop } = usePlayer();
   const { isLiked, toggleLike } = useLikes();
   const [time, setTime] = useState(0);
   // a drag on the progress bar in progress (null = showing the real position)
@@ -118,6 +118,16 @@ export function ControlBar({ offset, onOffset, template, onTemplate }: Props) {
         <IconButton label="Next" onClick={next} disabled={index >= queue.length - 1}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M16 5h2v14h-2zM4 5v14l11-7z" /></svg>
         </IconButton>
+        <button
+          onClick={toggleLoop}
+          className={`flex size-9 items-center justify-center rounded-full transition ${
+            loop ? "bg-[var(--system-pink)] text-white shadow-sm" : "text-secondary hover:bg-white/10 hover:text-foreground"
+          }`}
+          title={loop ? "Looping current song (press L to disable)" : "Loop current song (press L)"}
+          aria-label={loop ? "Disable repeat" : "Repeat current song"}
+        >
+          <RepeatIcon />
+        </button>
       </div>
 
       {/* progress */}
@@ -208,5 +218,16 @@ function IconButton({
     >
       {children}
     </button>
+  );
+}
+
+function RepeatIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m17 2 4 4-4 4" />
+      <path d="M3 11v-1a4 4 0 0 1 4-4h14" />
+      <path d="m7 22-4-4 4-4" />
+      <path d="M21 13v1a4 4 0 0 1-4 4H3" />
+    </svg>
   );
 }

@@ -38,6 +38,7 @@ Inspired by the [Cotodama Lyric Speaker](https://cotodama-speaker.com/). Not aff
 ## What it does
 
 - **Search and play almost any song.** Playback goes through YouTube's official embedded player, shown as a small video tile.
+- **Repeat & "Play Next" Queue:** Loop any song with one click (or key L), and insert tracks to play next directly from search results without interrupting playback.
 - **Lyrics that move with the music:** synced line by line, and word by word where the lyrics source has word timings.
 - **Seven text layouts:** Stack, Slide, Zoom, Letters, Scatter, Graph and Flow. "Auto style" picks one for each line from the song's genre, pace and chorus, or you can choose one yourself.
 - **Graph draws one continuous vine:** each new line grows out of the last one, the camera follows it, and the previous two lines linger above, dimmed and softly blurred. While Graph plays, the controls and cursor fade away after 3 seconds without input (move the mouse to bring them back); the video tile stays visible and moves down into the corner.
@@ -81,6 +82,7 @@ LyricalStudio is designed for desktop and laptop browsers (Chrome, Edge, Firefox
 | Space | Play / pause |
 | ← / → | Back / forward 5 seconds |
 | [ / ] | Lyrics earlier / later by 0.25 s |
+| L | Toggle loop / repeat |
 | F | Full screen |
 | Shift F | Frame-rate meter |
 | Esc | Close search, shrink the video |

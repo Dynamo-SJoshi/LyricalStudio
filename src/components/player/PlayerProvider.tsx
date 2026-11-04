@@ -19,9 +19,13 @@ type PlayerContextValue = {
   duration: number;
   volume: number;
   error: string | null;
+  loop: boolean;
+  toggleLoop: () => void;
   playQueue: (tracks: Track[], startIndex?: number) => void;
   /** play a song, then fill "Up next" with related songs (YouTube Music radio) */
   playRadio: (track: Track) => void;
+  /** insert a track to play immediately after the current song */
+  playNext: (track: Track) => void;
   next: () => void;
   prev: () => void;
   toggle: () => void;
@@ -53,6 +57,26 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [duration, setDuration] = useState(0);
   const [volume, setVolumeState] = useState(80);
   const [error, setError] = useState<string | null>(null);
+  const [loop, setLoop] = useState(false);
+  const loopRef = useRef(loop);
+  useEffect(() => {
+    loopRef.current = loop;
+  }, [loop]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("ls:loop");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (saved === "true") setLoop(true);
+  }, []);
+
+  const toggleLoop = useCallback(() => {
+    setLoop((prev) => {
+      const nextVal = !prev;
+      localStorage.setItem("ls:loop", String(nextVal));
+      return nextVal;
+    });
+  }, []);
+
   const [captions, setCaptionsState] = useState<CaptionsState>("off");
   const captionsWanted = useRef(false);
   /** captions were already applied to the current video */
@@ -245,6 +269,22 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     [playQueue, extendWithRadio],
   );
 
+  const playNext = useCallback(
+    (track: Track) => {
+      const { queue: q, index: i } = stateRef.current;
+      if (i < 0 || !q.length) {
+        playRadio(track);
+        return;
+      }
+      // If the track already appears after the current playing song, remove that duplicate
+      const filtered = q.filter((t, idx) => idx <= i || t.videoId !== track.videoId);
+      const nextQueue = [...filtered.slice(0, i + 1), track, ...filtered.slice(i + 1)];
+      stateRef.current = { queue: nextQueue, index: i };
+      setQueue(nextQueue);
+    },
+    [playRadio],
+  );
+
   // at the end of the queue, keep the music going with related songs
   const next = useCallback(async () => {
     const { queue: q, index: i } = stateRef.current;
@@ -313,17 +353,26 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     }
   }, [goTo, load]);
 
+  const restartCurrent = useCallback(() => {
+    const { queue: q, index: i } = stateRef.current;
+    if (i >= 0 && q[i]) {
+      load(q[i].videoId, q[i].kind === "song" ? q[i].durationSec : undefined);
+    }
+  }, [load]);
+
   // the YouTube player's callbacks are created once, so they read the latest handlers via refs
   const tryAlternateRef = useRef(tryAlternate);
   const nextRef = useRef(next);
+  const restartCurrentRef = useRef(restartCurrent);
   const applyCaptionsRef = useRef(applyCaptions);
   const pickCaptionTrackRef = useRef(pickCaptionTrack);
   useEffect(() => {
     tryAlternateRef.current = tryAlternate;
     nextRef.current = next;
+    restartCurrentRef.current = restartCurrent;
     applyCaptionsRef.current = applyCaptions;
     pickCaptionTrackRef.current = pickCaptionTrack;
-  }, [tryAlternate, next, applyCaptions, pickCaptionTrack]);
+  }, [tryAlternate, next, restartCurrent, applyCaptions, pickCaptionTrack]);
 
   // Exactly one player, ever. The host is recorded synchronously: React may attach the
   // same element twice (dev Strict Mode) before YouTube's script has loaded, which used
@@ -380,8 +429,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
                   break;
                 case YTState.ENDED:
                   setStatus("ended");
-                  // advance outside the player's own event (loading inside it can stall)
-                  setTimeout(() => void nextRef.current(), 200);
+                  // advance or loop outside the player's own event (loading inside it can stall)
+                  if (loopRef.current) {
+                    setTimeout(() => void restartCurrentRef.current(), 200);
+                  } else {
+                    setTimeout(() => void nextRef.current(), 200);
+                  }
                   break;
               }
             },
@@ -429,8 +482,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       duration,
       volume,
       error,
+      loop,
+      toggleLoop,
       playQueue,
       playRadio,
+      playNext,
       next,
       prev,
       toggle,
@@ -441,7 +497,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       setCaptions,
       attachHost,
     }),
-    [queue, index, current, status, duration, volume, error, playQueue, playRadio, next, prev, toggle, seek, setVolume, getTime, captions, setCaptions, attachHost],
+    [queue, index, current, status, duration, volume, error, loop, toggleLoop, playQueue, playRadio, playNext, next, prev, toggle, seek, setVolume, getTime, captions, setCaptions, attachHost],
   );
 
   return <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>;
