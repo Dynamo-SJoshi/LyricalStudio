@@ -1,10 +1,12 @@
 import "server-only";
 import type { Track } from "@/lib/types";
 import * as ytm from "@/lib/search/youtube-music";
+import { sortByRelevance } from "@/lib/search/relevance";
 import {
   ClientBudgetExceededError,
   QuotaExceededError,
   getRadioOfficial,
+  searchCatalogOfficial,
   searchTracksOfficial,
 } from "@/lib/search/youtube-data-api";
 
@@ -25,7 +27,8 @@ export class SearchUnavailableError extends Error {}
 export async function searchTracks(query: string, kind: Track["kind"], clientId: string): Promise<Track[]> {
   if (officialEnabled) {
     try {
-      return await searchTracksOfficial(query, kind, clientId);
+      const officialTracks = await searchTracksOfficial(query, kind, clientId);
+      return sortByRelevance(officialTracks, query);
     } catch (err) {
       if (!youtubeiEnabled) {
         throw new SearchUnavailableError(
@@ -40,7 +43,40 @@ export async function searchTracks(query: string, kind: Track["kind"], clientId:
     }
   }
   if (!youtubeiEnabled) throw new SearchUnavailableError("Search isn't configured on this server.");
-  return ytm.searchTracks(query, kind);
+  const tracks = await ytm.searchTracks(query, kind);
+  return sortByRelevance(tracks, query);
+}
+
+export type SearchCatalogResult = ytm.SearchCatalogResult;
+
+export async function searchCatalog(query: string, clientId: string): Promise<SearchCatalogResult> {
+  let result: SearchCatalogResult;
+  if (officialEnabled) {
+    try {
+      result = await searchCatalogOfficial(query, clientId);
+      return {
+        songs: sortByRelevance(result.songs, query),
+        videos: sortByRelevance(result.videos, query),
+      };
+    } catch (err) {
+      if (!youtubeiEnabled) {
+        throw new SearchUnavailableError(
+          err instanceof ClientBudgetExceededError
+            ? "You've reached today's search limit. Try again tomorrow, or play something from Home."
+            : err instanceof QuotaExceededError
+              ? "Today's search limit has been reached. Try again tomorrow."
+              : "Search is unavailable right now. Try again.",
+        );
+      }
+      console.warn("official search failed, falling back to youtubei.js", err);
+    }
+  }
+  if (!youtubeiEnabled) throw new SearchUnavailableError("Search isn't configured on this server.");
+  result = await ytm.searchCatalog(query);
+  return {
+    songs: sortByRelevance(result.songs, query),
+    videos: sortByRelevance(result.videos, query),
+  };
 }
 
 /** Songs related to a track, for "Up next" and "Made for you". */
