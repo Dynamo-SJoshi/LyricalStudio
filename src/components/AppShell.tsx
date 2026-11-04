@@ -17,6 +17,7 @@ import { LikesProvider } from "@/lib/library/likes";
 import { readOffset, writeOffset } from "@/lib/library/recent";
 import { useTrackData } from "@/lib/lyrics/useTrackData";
 import { TEMPLATES, type TemplateChoice } from "@/templates";
+import { LogoMark } from "./LogoMark";
 
 /** Idle time before immersive mode hides the controls, ms. */
 const IMMERSIVE_IDLE_MS = 3000;
@@ -167,8 +168,11 @@ function Studio() {
 
       <header className={`fixed inset-x-0 top-0 z-30 flex items-center justify-between gap-4 px-6 pt-5 ${chrome}`}>
         <div className="flex w-[260px] items-center gap-3">
-          <button onClick={() => setView("home")} className="text-lg font-black tracking-tight" title="Home">
-            LyricalStudio
+          <button onClick={() => setView("home")} className="flex items-center gap-2.5 text-lg font-black tracking-tight" title="Home">
+            <LogoMark size={28} />
+            <span>
+              Lyrical<span className="font-bold text-secondary">Studio</span>
+            </span>
           </button>
           {current && (
             <button

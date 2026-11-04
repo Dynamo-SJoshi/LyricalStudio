@@ -1,3 +1,5 @@
+<img src="public/icon-192.png" alt="LyricalStudio logo" width="96" height="96">
+
 # LyricalStudio
 
 **A free, open-source music player for the web that turns lyrics into kinetic typography.** Every word moves in time with the song, in bold type colored from the album art.
