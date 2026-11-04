@@ -51,7 +51,7 @@ export function LyricsStage({ track, lines, status, palette, seed, genre, lyrics
       const t = getTime() + LEAD_SECONDS - offset;
       const li = lineAt(lines, t);
       let next: Position;
-      if (li < 0) next = { mode: "intro", line: -1, revealed: 0 };
+      if (li < 0 || !lines[li]) next = { mode: "intro", line: -1, revealed: 0 };
       else {
         const line = lines[li];
         if (t > line.end) next = { mode: li === lines.length - 1 ? "outro" : "gap", line: li, revealed: 0 };
@@ -76,7 +76,7 @@ export function LyricsStage({ track, lines, status, palette, seed, genre, lyrics
   const rootRef = useRef<HTMLDivElement>(null);
   const lastRipple = useRef({ line: -1, revealed: 0 });
   useEffect(() => {
-    if (pos.mode !== "line") return;
+    if (pos.mode !== "line" || !lines[pos.line]) return;
     const prev = lastRipple.current;
     if (pos.line === prev.line && pos.revealed <= prev.revealed) return;
     lastRipple.current = { line: pos.line, revealed: pos.revealed };
@@ -126,8 +126,9 @@ export function LyricsStage({ track, lines, status, palette, seed, genre, lyrics
   let content: React.ReactNode;
   let key: string;
   let unclipped = false;
-  if (noLyrics || pos.mode === "intro" || pos.mode === "outro") {
-    key = noLyrics ? `title-${status}` : pos.mode;
+  const line = lines[pos.line];
+  if (noLyrics || pos.mode === "intro" || pos.mode === "outro" || !line) {
+    key = noLyrics ? `title-${status}` : !line ? "intro" : pos.mode;
     content = (
       <FitBox>
         <TitleCard
@@ -165,7 +166,6 @@ export function LyricsStage({ track, lines, status, palette, seed, genre, lyrics
     while (from > 0 && joined(from - 1)) from--;
     let to = pos.line;
     while (to < lines.length - 1 && joined(to)) to++;
-    const line = lines[pos.line];
     key = `${kind}-${from}`;
     // the graph draws on a canvas that covers the whole window
     unclipped = true;
@@ -176,7 +176,6 @@ export function LyricsStage({ track, lines, status, palette, seed, genre, lyrics
       </div>
     );
   } else {
-    const line = lines[pos.line];
     const lineSeed = (seed ^ hashString(line.text)) >>> 0;
     const scene = chooseScene(line, seed, genre, template === "auto" ? undefined : template);
     key = `line-${pos.line}`;

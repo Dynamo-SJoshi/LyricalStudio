@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MotionConfig } from "motion/react";
 import { PlayerProvider, usePlayer } from "@/components/player/PlayerProvider";
 import { ControlBar } from "@/components/player/ControlBar";
@@ -16,6 +16,7 @@ import { LyricsStage } from "@/components/stage/LyricsStage";
 import { LikesProvider } from "@/lib/library/likes";
 import { readOffset, writeOffset } from "@/lib/library/recent";
 import { useTrackData } from "@/lib/lyrics/useTrackData";
+import { transliterateLine } from "@/lib/lyrics/transliterate";
 import { TEMPLATES, type TemplateChoice } from "@/templates";
 import { LogoMark } from "./LogoMark";
 
@@ -41,6 +42,7 @@ function Studio() {
   const data = useTrackData(current, duration);
   const [template, setTemplateState] = useState<TemplateChoice>("auto");
   const [offset, setOffsetState] = useState(0);
+  const [romanize, setRomanize] = useState(false);
   // a new random value every time a song starts, so highlights (and layouts) vary per play
   const [playNonce, setPlayNonce] = useState(0);
   useEffect(() => {
@@ -86,6 +88,8 @@ function Studio() {
     const saved = localStorage.getItem("ls:template");
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (saved === "auto" || (saved && saved in TEMPLATES)) setTemplateState(saved as TemplateChoice);
+    const savedRoman = localStorage.getItem("ls:romanize");
+    if (savedRoman === "true") setRomanize(true);
   }, []);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -104,6 +108,19 @@ function Studio() {
     },
     [current],
   );
+
+  const toggleRomanize = useCallback(() => {
+    setRomanize((prev) => {
+      const nextVal = !prev;
+      localStorage.setItem("ls:romanize", String(nextVal));
+      return nextVal;
+    });
+  }, []);
+
+  const lines = useMemo(() => {
+    if (!romanize) return data.lines;
+    return data.lines.map(transliterateLine);
+  }, [data.lines, romanize]);
 
   // Immersive mode (Graph styles, while playing): after a few idle seconds the header,
   // control bar and cursor fade away so the lyrics own the screen. Any mouse movement,
@@ -155,11 +172,12 @@ function Studio() {
       else if (e.key === "ArrowLeft") seek(getTime() - 5);
       else if (e.key === "[") setOffset(offset - 0.25);
       else if (e.key === "]") setOffset(offset + 0.25);
+      else if (e.key === "t" || e.key === "T") toggleRomanize();
       else if (e.key === "Escape") setVideoBig(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [toggle, seek, getTime, offset, setOffset]);
+  }, [toggle, seek, getTime, offset, setOffset, toggleRomanize]);
 
   return (
     <>
@@ -199,8 +217,9 @@ function Studio() {
           <HomeView />
         ) : (
           <LyricsStage
+            key={current.videoId}
             track={current}
-            lines={data.lines}
+            lines={lines}
             status={data.status}
             palette={data.palette}
             seed={(data.seed ^ playNonce) >>> 0}
@@ -218,7 +237,14 @@ function Studio() {
       <YouTubeTile big={videoBig} onShrink={() => setVideoBig(false)} lowered={hideChrome} />
 
       <footer className={`fixed inset-x-6 bottom-5 z-30 ${chrome}`}>
-        <ControlBar offset={offset} onOffset={setOffset} template={template} onTemplate={setTemplate} />
+        <ControlBar
+          offset={offset}
+          onOffset={setOffset}
+          template={template}
+          onTemplate={setTemplate}
+          romanize={romanize}
+          onToggleRomanize={toggleRomanize}
+        />
       </footer>
     </>
   );
