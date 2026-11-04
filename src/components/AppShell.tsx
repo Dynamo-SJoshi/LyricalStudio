@@ -16,7 +16,7 @@ import { LyricsStage } from "@/components/stage/LyricsStage";
 import { LikesProvider } from "@/lib/library/likes";
 import { readOffset, writeOffset } from "@/lib/library/recent";
 import { useTrackData } from "@/lib/lyrics/useTrackData";
-import { transliterateLine } from "@/lib/lyrics/transliterate";
+import { applyAIRomanization, needsAIRomanization, transliterateLine } from "@/lib/lyrics/transliterate";
 import { TEMPLATES, type TemplateChoice } from "@/templates";
 import { LogoMark } from "./LogoMark";
 
@@ -117,10 +117,68 @@ function Studio() {
     });
   }, []);
 
+  const [aiLines, setAiLines] = useState<string[] | null>(null);
+
+  // Clear AI lines when song changes
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setAiLines(null);
+  }, [current?.videoId]);
+
+  // Progressive background AI romanization for complex scripts (Urdu, Japanese, Chinese, Korean)
+  useEffect(() => {
+    if (!current || !romanize || !data.lines.length) return;
+    if (!needsAIRomanization(data.lines)) return;
+
+    const cacheKey = `ls:roman:${current.videoId}`;
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached) as string[];
+        if (Array.isArray(parsed) && parsed.length) {
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          setAiLines(parsed);
+          return;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    let cancelled = false;
+    const q = new URLSearchParams({ title: current.title, artist: current.artist });
+    if (current.album) q.set("album", current.album);
+    if (current.durationSec) q.set("duration", String(current.durationSec));
+
+    fetch(`/api/romanize?${q}`)
+      .then((res) => {
+        if (!res.ok) throw new Error(res.statusText);
+        return res.json();
+      })
+      .then((d: { romanized?: string[] }) => {
+        if (!cancelled && Array.isArray(d.romanized) && d.romanized.length) {
+          setAiLines(d.romanized);
+          try {
+            localStorage.setItem(cacheKey, JSON.stringify(d.romanized));
+          } catch {
+            // ignore quota
+          }
+        }
+      })
+      .catch(() => {
+        // on 429 or failure: gracefully fall back to local phonetics engine
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [current?.videoId, current?.title, current?.artist, current?.album, current?.durationSec, romanize, data.lines]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const lines = useMemo(() => {
     if (!romanize) return data.lines;
+    if (aiLines && aiLines.length) return applyAIRomanization(data.lines, aiLines);
     return data.lines.map(transliterateLine);
-  }, [data.lines, romanize]);
+  }, [data.lines, romanize, aiLines]);
 
   // Immersive mode (Graph styles, while playing): after a few idle seconds the header,
   // control bar and cursor fade away so the lyrics own the screen. Any mouse movement,

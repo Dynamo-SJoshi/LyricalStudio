@@ -165,6 +165,7 @@ Restart `npm run dev` after editing `.env.local`. Git ignores this file, so your
 | `YOUTUBE_API_KEY` | Uses the official [YouTube Data API](https://developers.google.com/youtube/v3) for search. See [the next section](#getting-a-youtube-data-api-key). | Not set: search uses youtubei.js |
 | `YOUTUBEI_ENABLED` | Set to `false` to never use youtubei.js, the unofficial YouTube Music client. Turns off the YouTube Music home feed and playlists. Recommended for public sites, together with `YOUTUBE_API_KEY`. | On |
 | `YOUTUBE_SEARCHES_PER_IP_PER_DAY` | How many official-API searches one visitor can trigger per day. Cached searches don't count. Stops one person from using up the whole site's quota. | `25` |
+| `GEMINI_API_KEY` | Optional [Google Gemini API](https://aistudio.google.com/) key for AI Romanization of complex scripts (Urdu, Japanese, Chinese, Korean). On 429 rate limits, falls back to the client-side rule engine. | Not set: uses client-side rule engine |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Shares the per-visitor rate limits across all server instances, using a free [Upstash](https://upstash.com) Redis database. | Each instance counts on its own |
 | `RATE_LIMIT` | Set to `off` to disable rate limiting. | On |
 

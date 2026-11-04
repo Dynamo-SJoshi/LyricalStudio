@@ -904,3 +904,58 @@ export function transliterateLine(line: LyricLine): LyricLine {
     sub: line.sub ? transliterateText(line.sub) : undefined,
   };
 }
+
+/**
+ * Checks if the song contains scripts that benefit from contextual AI romanization:
+ * - Perso-Arabic Urdu (\u0600-\u06FF)
+ * - Chinese Hanzi / Japanese Kanji (\u4E00-\u9FFF)
+ * - Japanese Kana (\u3040-\u30FF)
+ * - Korean Hangul (\uAC00-\uD7AF)
+ */
+export function needsAIRomanization(lines: LyricLine[]): boolean {
+  const COMPLEX_REGEX = /[\u0600-\u06FF\u4E00-\u9FFF\u3040-\u30FF\uAC00-\uD7AF]/;
+  return lines.some((l) => COMPLEX_REGEX.test(l.text) || l.words.some((w) => COMPLEX_REGEX.test(w.text)));
+}
+
+/**
+ * Aligns AI-romanized text back with original line timing stamps.
+ */
+export function applyAIRomanization(lines: LyricLine[], aiLines: string[]): LyricLine[] {
+  return lines.map((line, idx) => {
+    const aiText = aiLines[idx];
+    if (!aiText || !aiText.trim()) return transliterateLine(line);
+
+    const aiTokens = aiText.trim().split(/\s+/).filter(Boolean);
+    const origWords = line.words;
+
+    let words: LyricWord[];
+    if (aiTokens.length === origWords.length) {
+      // 1:1 match: keep exact timestamps!
+      words = origWords.map((w, wIdx) => ({
+        ...w,
+        text: aiTokens[wIdx],
+      }));
+    } else if (origWords.length > 0) {
+      // Proportionally interpolate timestamps across the line's span
+      const start = origWords[0].start;
+      const end = origWords[origWords.length - 1].end;
+      const span = Math.max(0.4, end - start);
+      const step = span / aiTokens.length;
+
+      words = aiTokens.map((text, wIdx) => ({
+        text,
+        start: start + wIdx * step,
+        end: start + (wIdx + 1) * step,
+      }));
+    } else {
+      words = [];
+    }
+
+    return {
+      ...line,
+      text: aiText,
+      words,
+      lang: "en",
+    };
+  });
+}

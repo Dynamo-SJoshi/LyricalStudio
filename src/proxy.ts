@@ -12,6 +12,7 @@ const LIMITS: [prefix: string, limit: number][] = [
   ["/api/search", 30],
   ["/api/radio", 30],
   ["/api/lyrics", 60],
+  ["/api/romanize", 20],
   ["/api/meta", 60],
   ["/api/playlist", 30],
   ["/api/home", 20],
