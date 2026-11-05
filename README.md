@@ -37,7 +37,7 @@ Inspired by the [Cotodama Lyric Speaker](https://cotodama-speaker.com/). Not aff
 
 ## What it does
 
-- **Search and play almost any song.** Playback goes through YouTube's official embedded player, shown as a small video tile.
+- **Search and play almost any song.** Playback goes through YouTube's official embedded player, shown as a small video tile. Searches both official distributor tracks and independent video uploads with smart phonetic & title relevance ranking.
 - **Repeat & "Play Next" Queue:** Loop any song with one click (or key L), and insert tracks to play next directly from search results without interrupting playback.
 - **Lyrics that move with the music:** synced line by line, and word by word where the lyrics source has word timings.
 - **Seven text layouts:** Stack, Slide, Zoom, Letters, Scatter, Graph and Flow. "Auto style" picks one for each line from the song's genre, pace and chorus, or you can choose one yourself.

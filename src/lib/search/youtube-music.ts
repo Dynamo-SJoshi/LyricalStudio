@@ -55,6 +55,37 @@ export async function searchTracks(query: string, kind: Track["kind"] = "song"):
   return items.map((i) => toTrack(i, kind)).filter((t): t is Track => t !== null);
 }
 
+export type SearchCatalogResult = {
+  songs: Track[];
+  videos: Track[];
+};
+
+/** Searches both official album tracks (songs) and video uploads, deduplicating any overlap. */
+export async function searchCatalog(query: string): Promise<SearchCatalogResult> {
+  const yt = await getClient();
+  const [songRes, videoRes] = await Promise.all([
+    yt.music.search(query, { type: "song" }).catch((err) => {
+      console.warn("ytm song search failed", err);
+      return null;
+    }),
+    yt.music.search(query, { type: "video" }).catch((err) => {
+      console.warn("ytm video search failed", err);
+      return null;
+    }),
+  ]);
+
+  const songItems = (songRes?.songs?.contents ?? []) as unknown as MusicItem[];
+  const songs = songItems.map((i) => toTrack(i, "song")).filter((t): t is Track => t !== null);
+
+  const songIds = new Set(songs.map((s) => s.videoId));
+  const videoItems = (videoRes?.videos?.contents ?? []) as unknown as MusicItem[];
+  const videos = videoItems
+    .map((i) => toTrack(i, "video"))
+    .filter((t): t is Track => t !== null && !songIds.has(t.videoId));
+
+  return { songs, videos };
+}
+
 /* ------------------------------ home & radio ------------------------------ */
 
 export type PlaylistCard = { id: string; title: string; subtitle?: string; artwork?: string };

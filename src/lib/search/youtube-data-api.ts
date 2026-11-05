@@ -161,6 +161,27 @@ export async function searchTracksOfficial(query: string, kind: Track["kind"], c
   return tracks;
 }
 
+export async function searchCatalogOfficial(
+  query: string,
+  clientId: string,
+): Promise<{ songs: Track[]; videos: Track[] }> {
+  const key = `catalog:${query.toLowerCase()}`;
+  const fromCache = cached(key);
+  if (fromCache) {
+    return {
+      songs: fromCache.filter((t) => t.kind === "song"),
+      videos: fromCache.filter((t) => t.kind === "video"),
+    };
+  }
+  await spend(clientId);
+  const found = await searchVideos(query, 15);
+  remember(key, found);
+  return {
+    songs: found.filter((t) => t.kind === "song"),
+    videos: found.filter((t) => t.kind === "video"),
+  };
+}
+
 /**
  * Related songs. The Data API no longer offers "related videos", so this searches for
  * more by the same artist (cached per artist, since it costs a full search).
