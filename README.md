@@ -40,6 +40,7 @@ Inspired by the [Cotodama Lyric Speaker](https://cotodama-speaker.com/). Not aff
 - **Search and play almost any song.** Playback goes through YouTube's official embedded player, shown as a small video tile. Searches both official distributor tracks and independent video uploads with smart phonetic & title relevance ranking.
 - **Repeat & "Play Next" Queue:** Loop any song with one click (or key L), and insert tracks to play next directly from search results without interrupting playback.
 - **Lyrics that move with the music:** synced line by line, and word by word where the lyrics source has word timings.
+- **Instant Transliteration:** Toggle button (or key `T`) converts non-Latin scripts (Hindi to Hinglish, Urdu to Roman Urdu) to Latin characters on the fly with zero audio timing disruption, powered by a fast client-side phonetics engine.
 - **Seven text layouts:** Stack, Slide, Zoom, Letters, Scatter, Graph and Flow. "Auto style" picks one for each line from the song's genre, pace and chorus, or you can choose one yourself.
 - **Graph draws one continuous vine:** each new line grows out of the last one, the camera follows it, and the previous two lines linger above, dimmed and softly blurred. While Graph plays, the controls and cursor fade away after 3 seconds without input (move the mouse to bring them back); the video tile stays visible and moves down into the corner.
 - **Always gently in motion:** the lyrics float a little all the time, even between words and during instrumental parts.
@@ -83,6 +84,7 @@ LyricalStudio is designed for desktop and laptop browsers (Chrome, Edge, Firefox
 | ← / → | Back / forward 5 seconds |
 | [ / ] | Lyrics earlier / later by 0.25 s |
 | L | Toggle loop / repeat |
+| T | Toggle Hinglish / Roman transliteration |
 | F | Full screen |
 | Shift F | Frame-rate meter |
 | Esc | Close search, shrink the video |
@@ -165,6 +167,7 @@ Restart `npm run dev` after editing `.env.local`. Git ignores this file, so your
 | `YOUTUBE_API_KEY` | Uses the official [YouTube Data API](https://developers.google.com/youtube/v3) for search. See [the next section](#getting-a-youtube-data-api-key). | Not set: search uses youtubei.js |
 | `YOUTUBEI_ENABLED` | Set to `false` to never use youtubei.js, the unofficial YouTube Music client. Turns off the YouTube Music home feed and playlists. Recommended for public sites, together with `YOUTUBE_API_KEY`. | On |
 | `YOUTUBE_SEARCHES_PER_IP_PER_DAY` | How many official-API searches one visitor can trigger per day. Cached searches don't count. Stops one person from using up the whole site's quota. | `25` |
+| `GEMINI_API_KEY` | Optional [Google Gemini API](https://aistudio.google.com/) key for AI Romanization of complex scripts (Urdu, Japanese, Chinese, Korean). On 429 rate limits, falls back to the client-side rule engine. | Not set: uses client-side rule engine |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Shares the per-visitor rate limits across all server instances, using a free [Upstash](https://upstash.com) Redis database. | Each instance counts on its own |
 | `RATE_LIMIT` | Set to `off` to disable rate limiting. | On |
 

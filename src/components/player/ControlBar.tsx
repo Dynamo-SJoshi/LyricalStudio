@@ -11,10 +11,12 @@ type Props = {
   onOffset: (v: number) => void;
   template: TemplateChoice;
   onTemplate: (t: TemplateChoice) => void;
+  romanize: boolean;
+  onToggleRomanize: () => void;
 };
 
 /** Floating glass control bar: track info, transport, progress, sync offset, style, volume. */
-export function ControlBar({ offset, onOffset, template, onTemplate }: Props) {
+export function ControlBar({ offset, onOffset, template, onTemplate, romanize, onToggleRomanize }: Props) {
   const { current, status, duration, volume, toggle, next, prev, seek, setVolume, getTime, queue, index, loop, toggleLoop } = usePlayer();
   const { isLiked, toggleLike } = useLikes();
   const [time, setTime] = useState(0);
@@ -176,6 +178,18 @@ export function ControlBar({ offset, onOffset, template, onTemplate }: Props) {
           </option>
         ))}
       </select>
+
+      {/* transliteration toggle */}
+      <button
+        onClick={onToggleRomanize}
+        aria-label="Toggle Hinglish / Roman transliteration"
+        title="Toggle Hinglish / Roman script transliteration (press T)"
+        className={`flex h-8 items-center gap-1.5 rounded-full px-3 text-[12px] font-medium transition active:scale-95 ${
+          romanize ? "bg-[var(--system-pink)] text-white shadow-sm" : "border border-white/15 bg-white/5 text-secondary hover:text-foreground"
+        }`}
+      >
+        <span>{romanize ? "EN Hinglish" : "हि/اردو Original"}</span>
+      </button>
 
       {/* volume */}
       <div className="flex w-[120px] shrink-0 items-center gap-2 pr-3">

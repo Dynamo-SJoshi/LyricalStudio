@@ -44,6 +44,7 @@ These keep the app legal and smooth. PRs that break them can't be merged.
 
 - Lyrics are live DOM text. Animate only `transform` and `opacity` (or the individual `rotate`/`scale` properties) through the Web Animations API helpers in [`src/templates/waapi.ts`](src/templates/waapi.ts). Don't drive motion from JS frame loops, and never animate CSS blur.
 - Respect `prefers-reduced-motion`.
+- Transliteration must preserve word-level timestamp intervals (`time`, `endTime`) so kinetic timing remains synchronized. Consonant combining marks (e.g. Devanagari nuktas) must be consumed to avoid rendering dotted circle placeholders (`◌`).
 - Don't continuously scale text (it rasterizes and looks soft), and don't clip words with `overflow: hidden` wrappers.
 - Every word element carries `data-fit` and sits inside a `FitBox`, so lyrics never get cut off.
 - When the next line starts, the previous line must disappear completely (no echoes or faint previews).
