@@ -268,7 +268,7 @@ function Studio() {
 
       {/* lyrics stage: sized with container units so lyrics never run under the video tile */}
       <main
-        className={`fixed top-[76px] bottom-[120px] left-6 z-10 ${view === "home" || !current ? "right-6" : videoBig ? "right-[calc(min(720px,58vw)+60px)]" : "right-[248px]"}`}
+        className={`fixed top-[76px] ${current ? "bottom-[120px]" : "bottom-6"} left-6 z-10 ${view === "home" || !current ? "right-6" : videoBig ? "right-[calc(min(720px,58vw)+60px)]" : "right-[248px]"}`}
         style={{ containerType: "size" }}
       >
         {view === "home" || !current ? (
