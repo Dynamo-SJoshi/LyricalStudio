@@ -17,7 +17,7 @@ Open-source (MIT) web music player whose main feature is Cotodama-style kinetic 
 - Playback: official YouTube IFrame Player API. YouTube policy requires the player to stay visible and uncovered (min 200x200 px), so show it as a small video tile; never hide or overlay it. Never download, rip, proxy or host audio (no yt-dlp, no stream extraction).
 - Search: the official YouTube Data API when YOUTUBE_API_KEY is set, otherwise youtubei.js on the server (prefer "Artist - Topic" album uploads for lyric timing). Metadata/artwork: iTunes Search API. Lyrics: LRCLIB, plus lrcmux for word timing (credit them).
 - No accounts: the app is guest-only. Likes, recently played songs and per-song sync offsets live in the browser (localStorage). Don't add login or a database without the owner.
-- Languages: English, Japanese, Hindi, Urdu. Japanese needs word segmentation (Intl.Segmenter), Hindi uses Devanagari fonts. Transliteration converts non-Latin scripts (Hindi to Hinglish, Urdu to Roman Urdu) via a fast client-side phonetics engine (`src/lib/lyrics/transliterate.ts`), with optional background AI romanization (`/api/romanize`) using a single `GEMINI_API_KEY`. Toggle state persists in `localStorage` (`ls:romanize`), and AI romanizations are cached per song (`ls:roman:<videoId>`).
+- Languages: English, Japanese, Hindi. Japanese needs word segmentation (Intl.Segmenter), Hindi uses Devanagari fonts.
 - Style: bold Cotodama-like typography, Apple system colors + album-art palette. Respect prefers-reduced-motion.
 - Fonts: system stack (-apple-system) with Inter / Noto Sans JP / Noto Sans Devanagari fallbacks. Never bundle SF Pro.
 - No secrets in the repo: keys live in .env.local; document every key in .env.example.

@@ -135,7 +135,7 @@ function Studio() {
     if (cached) {
       try {
         const parsed = JSON.parse(cached) as string[];
-        if (Array.isArray(parsed) && parsed.length) {
+        if (Array.isArray(parsed) && parsed.length === data.lines.length) {
           // eslint-disable-next-line react-hooks/set-state-in-effect
           setAiLines(parsed);
           return;
@@ -156,7 +156,7 @@ function Studio() {
         return res.json();
       })
       .then((d: { romanized?: string[] }) => {
-        if (!cancelled && Array.isArray(d.romanized) && d.romanized.length) {
+        if (!cancelled && Array.isArray(d.romanized) && d.romanized.length === data.lines.length) {
           setAiLines(d.romanized);
           try {
             localStorage.setItem(cacheKey, JSON.stringify(d.romanized));
@@ -176,7 +176,7 @@ function Studio() {
 
   const lines = useMemo(() => {
     if (!romanize) return data.lines;
-    if (aiLines && aiLines.length) return applyAIRomanization(data.lines, aiLines);
+    if (aiLines && aiLines.length === data.lines.length) return applyAIRomanization(data.lines, aiLines);
     return data.lines.map(transliterateLine);
   }, [data.lines, romanize, aiLines]);
 
