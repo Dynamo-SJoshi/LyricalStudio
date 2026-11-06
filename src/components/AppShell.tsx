@@ -16,7 +16,7 @@ import { LyricsStage } from "@/components/stage/LyricsStage";
 import { LikesProvider } from "@/lib/library/likes";
 import { readOffset, writeOffset } from "@/lib/library/recent";
 import { useTrackData } from "@/lib/lyrics/useTrackData";
-import { applyAIRomanization, needsAIRomanization, transliterateLine } from "@/lib/lyrics/transliterate";
+import { applyAIRomanization, canTransliterateLyrics, needsAIRomanization, transliterateLine } from "@/lib/lyrics/transliterate";
 import { TEMPLATES, type TemplateChoice } from "@/templates";
 import { LogoMark } from "./LogoMark";
 
@@ -174,6 +174,10 @@ function Studio() {
     };
   }, [current?.videoId, current?.title, current?.artist, current?.album, current?.durationSec, romanize, data.lines]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const canRomanize = useMemo(() => {
+    return canTransliterateLyrics(data.lines);
+  }, [data.lines]);
+
   const lines = useMemo(() => {
     if (!romanize) return data.lines;
     if (aiLines && aiLines.length === data.lines.length) return applyAIRomanization(data.lines, aiLines);
@@ -230,12 +234,14 @@ function Studio() {
       else if (e.key === "ArrowLeft") seek(getTime() - 5);
       else if (e.key === "[") setOffset(offset - 0.25);
       else if (e.key === "]") setOffset(offset + 0.25);
-      else if (e.key === "t" || e.key === "T") toggleRomanize();
+      else if (e.key === "t" || e.key === "T") {
+        if (canRomanize) toggleRomanize();
+      }
       else if (e.key === "Escape") setVideoBig(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [toggle, seek, getTime, offset, setOffset, toggleRomanize]);
+  }, [toggle, seek, getTime, offset, setOffset, toggleRomanize, canRomanize]);
 
   return (
     <>
@@ -301,6 +307,7 @@ function Studio() {
           template={template}
           onTemplate={setTemplate}
           romanize={romanize}
+          canRomanize={canRomanize}
           onToggleRomanize={toggleRomanize}
         />
       </footer>
