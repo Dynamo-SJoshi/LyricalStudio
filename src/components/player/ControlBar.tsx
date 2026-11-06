@@ -12,11 +12,12 @@ type Props = {
   template: TemplateChoice;
   onTemplate: (t: TemplateChoice) => void;
   romanize: boolean;
+  canRomanize?: boolean;
   onToggleRomanize: () => void;
 };
 
 /** Floating glass control bar: track info, transport, progress, sync offset, style, volume. */
-export function ControlBar({ offset, onOffset, template, onTemplate, romanize, onToggleRomanize }: Props) {
+export function ControlBar({ offset, onOffset, template, onTemplate, romanize, canRomanize = true, onToggleRomanize }: Props) {
   const { current, status, duration, volume, toggle, next, prev, seek, setVolume, getTime, queue, index, loop, toggleLoop } = usePlayer();
   const { isLiked, toggleLike } = useLikes();
   const [time, setTime] = useState(0);
@@ -182,13 +183,30 @@ export function ControlBar({ offset, onOffset, template, onTemplate, romanize, o
       {/* transliteration toggle */}
       <button
         onClick={onToggleRomanize}
-        aria-label="Toggle Hinglish / Roman transliteration"
-        title="Toggle Hinglish / Roman script transliteration (press T)"
-        className={`flex h-8 items-center gap-1.5 rounded-full px-3 text-[12px] font-medium transition active:scale-95 ${
-          romanize ? "bg-[var(--system-pink)] text-white shadow-sm" : "border border-white/15 bg-white/5 text-secondary hover:text-foreground"
+        disabled={!canRomanize}
+        aria-label={
+          !canRomanize
+            ? "Lyrics already in Latin / English script"
+            : romanize
+            ? "Showing Romanized English (press T for original)"
+            : "Showing original script (press T for Romanized English)"
+        }
+        title={
+          !canRomanize
+            ? "Lyrics already in Latin / English script"
+            : romanize
+            ? "Showing Romanized English (press T for original)"
+            : "Showing original script (press T for Romanized English)"
+        }
+        className={`flex h-8 min-w-9 items-center justify-center rounded-full px-2.5 transition active:scale-95 ${
+          !canRomanize
+            ? "border border-white/10 bg-white/5 text-secondary/40 cursor-not-allowed opacity-45"
+            : romanize
+            ? "bg-[var(--system-pink)] text-white shadow-sm"
+            : "border border-white/15 bg-white/5 text-secondary hover:bg-white/10 hover:text-foreground"
         }`}
       >
-        <span>{romanize ? "EN Hinglish" : "हि/اردو Original"}</span>
+        <EnIcon slashed={!romanize || !canRomanize} />
       </button>
 
       {/* volume */}
@@ -243,5 +261,24 @@ function RepeatIcon() {
       <path d="m7 22-4-4 4-4" />
       <path d="M21 13v1a4 4 0 0 1-4 4H3" />
     </svg>
+  );
+}
+
+function EnIcon({ slashed }: { slashed: boolean }) {
+  return (
+    <span className="relative inline-flex items-center justify-center font-bold text-[13px] leading-none select-none tracking-tight">
+      <span>En</span>
+      {slashed && (
+        <svg
+          className="absolute -inset-0.5 size-[calc(100%+4px)] pointer-events-none"
+          viewBox="0 0 20 20"
+          fill="none"
+          strokeLinecap="round"
+        >
+          <line x1="3" y1="17" x2="17" y2="3" stroke="#000" strokeWidth="3.2" strokeOpacity="0.7" />
+          <line x1="3" y1="17" x2="17" y2="3" stroke="currentColor" strokeWidth="2" />
+        </svg>
+      )}
+    </span>
   );
 }
