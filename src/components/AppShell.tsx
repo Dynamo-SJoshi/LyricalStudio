@@ -16,7 +16,7 @@ import { LyricsStage } from "@/components/stage/LyricsStage";
 import { LikesProvider } from "@/lib/library/likes";
 import { readOffset, writeOffset } from "@/lib/library/recent";
 import { useTrackData } from "@/lib/lyrics/useTrackData";
-import { transliterateLine } from "@/lib/lyrics/transliterate";
+import { canTransliterateLyrics, transliterateLine } from "@/lib/lyrics/transliterate";
 import { TEMPLATES, type TemplateChoice } from "@/templates";
 import { LogoMark } from "./LogoMark";
 
@@ -117,6 +117,9 @@ function Studio() {
     });
   }, []);
 
+  const canRomanize = useMemo(() => {
+    return canTransliterateLyrics(data.lines);
+  }, [data.lines]);
   const lines = useMemo(() => {
     if (!romanize) return data.lines;
     return data.lines.map(transliterateLine);
@@ -172,12 +175,14 @@ function Studio() {
       else if (e.key === "ArrowLeft") seek(getTime() - 5);
       else if (e.key === "[") setOffset(offset - 0.25);
       else if (e.key === "]") setOffset(offset + 0.25);
-      else if (e.key === "t" || e.key === "T") toggleRomanize();
+      else if (e.key === "t" || e.key === "T") {
+        if (canRomanize) toggleRomanize();
+      }
       else if (e.key === "Escape") setVideoBig(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [toggle, seek, getTime, offset, setOffset, toggleRomanize]);
+  }, [toggle, seek, getTime, offset, setOffset, toggleRomanize, canRomanize]);
 
   return (
     <>
@@ -243,6 +248,7 @@ function Studio() {
           template={template}
           onTemplate={setTemplate}
           romanize={romanize}
+          canRomanize={canRomanize}
           onToggleRomanize={toggleRomanize}
         />
       </footer>

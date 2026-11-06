@@ -845,6 +845,15 @@ export function hasNonLatin(text: string): boolean {
   return /[\u0900-\u097F\u0600-\u06FF\u0A00-\u0A7F]/.test(text);
 }
 
+/**
+ * Detects if any lyric lines contain non-Latin scripts (Indic, Urdu, CJK, etc.)
+ * that can be transliterated or romanized.
+ */
+export function canTransliterateLyrics(lines: LyricLine[]): boolean {
+  const NON_LATIN_REGEX = /[\u0600-\u06FF\u0750-\u077F\u0900-\u097F\u0A00-\u0A7F\u3040-\u30FF\u4E00-\u9FFF\uAC00-\uD7AF]/;
+  return lines.some((l) => NON_LATIN_REGEX.test(l.text) || l.words.some((w) => NON_LATIN_REGEX.test(w.text)));
+}
+
 /** Transliterates a single token/word */
 export function transliterateWord(token: string): string {
   // Handle hyphenated words (e.g. बे-फ़िज़ूल, कभी-कभी, dil-e-jaan)
