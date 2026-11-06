@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MotionConfig } from "motion/react";
 import { PlayerProvider, usePlayer } from "@/components/player/PlayerProvider";
 import { ControlBar } from "@/components/player/ControlBar";
@@ -16,6 +16,7 @@ import { LyricsStage } from "@/components/stage/LyricsStage";
 import { LikesProvider } from "@/lib/library/likes";
 import { readOffset, writeOffset } from "@/lib/library/recent";
 import { useTrackData } from "@/lib/lyrics/useTrackData";
+import { applyAIRomanization, canTransliterateLyrics, needsAIRomanization, transliterateLine } from "@/lib/lyrics/transliterate";
 import { TEMPLATES, type TemplateChoice } from "@/templates";
 import { LogoMark } from "./LogoMark";
 
@@ -37,10 +38,11 @@ export function AppShell() {
 }
 
 function Studio() {
-  const { current, duration, status, getTime, toggle, seek, captions, setCaptions } = usePlayer();
+  const { current, duration, status, getTime, toggle, seek, captions, setCaptions, toggleLoop } = usePlayer();
   const data = useTrackData(current, duration);
   const [template, setTemplateState] = useState<TemplateChoice>("auto");
   const [offset, setOffsetState] = useState(0);
+  const [romanize, setRomanize] = useState(false);
   // a new random value every time a song starts, so highlights (and layouts) vary per play
   const [playNonce, setPlayNonce] = useState(0);
   useEffect(() => {
@@ -86,6 +88,8 @@ function Studio() {
     const saved = localStorage.getItem("ls:template");
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (saved === "auto" || (saved && saved in TEMPLATES)) setTemplateState(saved as TemplateChoice);
+    const savedRoman = localStorage.getItem("ls:romanize");
+    if (savedRoman === "true") setRomanize(true);
   }, []);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -104,6 +108,81 @@ function Studio() {
     },
     [current],
   );
+
+  const toggleRomanize = useCallback(() => {
+    setRomanize((prev) => {
+      const nextVal = !prev;
+      localStorage.setItem("ls:romanize", String(nextVal));
+      return nextVal;
+    });
+  }, []);
+
+  const [aiLines, setAiLines] = useState<string[] | null>(null);
+
+  // Clear AI lines when song changes
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setAiLines(null);
+  }, [current?.videoId]);
+
+  // Progressive background AI romanization for complex scripts (Urdu, Japanese, Chinese, Korean)
+  useEffect(() => {
+    if (!current || !romanize || !data.lines.length) return;
+    if (!needsAIRomanization(data.lines)) return;
+
+    const cacheKey = `ls:roman:${current.videoId}`;
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached) as string[];
+        if (Array.isArray(parsed) && parsed.length === data.lines.length) {
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          setAiLines(parsed);
+          return;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    let cancelled = false;
+    const q = new URLSearchParams({ title: current.title, artist: current.artist });
+    if (current.album) q.set("album", current.album);
+    if (current.durationSec) q.set("duration", String(current.durationSec));
+
+    fetch(`/api/romanize?${q}`)
+      .then((res) => {
+        if (!res.ok) throw new Error(res.statusText);
+        return res.json();
+      })
+      .then((d: { romanized?: string[] }) => {
+        if (!cancelled && Array.isArray(d.romanized) && d.romanized.length === data.lines.length) {
+          setAiLines(d.romanized);
+          try {
+            localStorage.setItem(cacheKey, JSON.stringify(d.romanized));
+          } catch {
+            // ignore quota
+          }
+        }
+      })
+      .catch(() => {
+        // on 429 or failure: gracefully fall back to local phonetics engine
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [current?.videoId, current?.title, current?.artist, current?.album, current?.durationSec, romanize, data.lines]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const canRomanize = useMemo(() => {
+    return canTransliterateLyrics(data.lines);
+  }, [data.lines]);
+
+  const lines = useMemo(() => {
+    if (!romanize) return data.lines;
+    if (aiLines && aiLines.length === data.lines.length) return applyAIRomanization(data.lines, aiLines);
+    return data.lines.map(transliterateLine);
+  }, [data.lines, romanize, aiLines]);
 
   // Immersive mode (Graph styles, while playing): after a few idle seconds the header,
   // control bar and cursor fade away so the lyrics own the screen. Any mouse movement,
@@ -155,11 +234,15 @@ function Studio() {
       else if (e.key === "ArrowLeft") seek(getTime() - 5);
       else if (e.key === "[") setOffset(offset - 0.25);
       else if (e.key === "]") setOffset(offset + 0.25);
+      else if (e.key === "l" || e.key === "L") toggleLoop();
+      else if (e.key === "t" || e.key === "T") {
+        if (canRomanize) toggleRomanize();
+      }
       else if (e.key === "Escape") setVideoBig(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [toggle, seek, getTime, offset, setOffset]);
+  }, [toggle, seek, getTime, offset, setOffset, toggleLoop, toggleRomanize, canRomanize]);
 
   return (
     <>
@@ -192,15 +275,16 @@ function Studio() {
 
       {/* lyrics stage: sized with container units so lyrics never run under the video tile */}
       <main
-        className={`fixed top-[76px] bottom-[120px] left-6 z-10 ${view === "home" || !current ? "right-6" : videoBig ? "right-[calc(min(720px,58vw)+60px)]" : "right-[248px]"}`}
+        className={`fixed top-[76px] ${current ? "bottom-[120px]" : "bottom-6"} left-6 z-10 ${view === "home" || !current ? "right-6" : videoBig ? "right-[calc(min(720px,58vw)+60px)]" : "right-[248px]"}`}
         style={{ containerType: "size" }}
       >
         {view === "home" || !current ? (
           <HomeView />
         ) : (
           <LyricsStage
+            key={current.videoId}
             track={current}
-            lines={data.lines}
+            lines={lines}
             status={data.status}
             palette={data.palette}
             seed={(data.seed ^ playNonce) >>> 0}
@@ -218,7 +302,15 @@ function Studio() {
       <YouTubeTile big={videoBig} onShrink={() => setVideoBig(false)} lowered={hideChrome} />
 
       <footer className={`fixed inset-x-6 bottom-5 z-30 ${chrome}`}>
-        <ControlBar offset={offset} onOffset={setOffset} template={template} onTemplate={setTemplate} />
+        <ControlBar
+          offset={offset}
+          onOffset={setOffset}
+          template={template}
+          onTemplate={setTemplate}
+          romanize={romanize}
+          canRomanize={canRomanize}
+          onToggleRomanize={toggleRomanize}
+        />
       </footer>
     </>
   );

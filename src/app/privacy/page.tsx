@@ -7,7 +7,7 @@ export const metadata: Metadata = {
 };
 
 const REPO = "https://github.com/arijit-debug/LyricalStudio";
-const UPDATED = "November 4, 2026";
+const UPDATED = "November 6, 2026";
 
 export default function PrivacyPage() {
   return (
@@ -59,7 +59,9 @@ export default function PrivacyPage() {
         <p className="mt-3">
           To find lyrics, artwork and genre, our server sends the song&apos;s title, artist, album and length (never
           anything about you) to <A href="https://lrclib.net">LRCLIB</A>, <A href="https://lrcmux.dev">lrcmux</A> and the{" "}
-          <A href="https://performance-partners.apple.com/search-api">iTunes Search API</A>.
+          <A href="https://performance-partners.apple.com/search-api">iTunes Search API</A>. If the site owner configures
+          a Google Gemini API key, lyrics text only (never anything about you) for songs with non-Latin scripts may be
+          sent to Google Gemini for romanization.
         </p>
       </Section>
 
