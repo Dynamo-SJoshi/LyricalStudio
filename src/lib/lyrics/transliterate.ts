@@ -921,6 +921,9 @@ export function needsAIRomanization(lines: LyricLine[]): boolean {
  * Aligns AI-romanized text back with original line timing stamps.
  */
 export function applyAIRomanization(lines: LyricLine[], aiLines: string[]): LyricLine[] {
+  if (!aiLines || aiLines.length !== lines.length) {
+    return lines.map(transliterateLine);
+  }
   return lines.map((line, idx) => {
     const aiText = aiLines[idx];
     if (!aiText || !aiText.trim()) return transliterateLine(line);

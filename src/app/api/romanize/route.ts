@@ -39,6 +39,15 @@ export async function GET(request: Request) {
     return Response.json({ error: "Romanization not configured" }, { status: 503 });
   }
 
+  const cacheKey = `${artist}|${title}`.toLowerCase();
+  const cached = memoryCache.get(cacheKey);
+  if (cached) {
+    return Response.json(
+      { romanized: cached },
+      { headers: { "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400" } },
+    );
+  }
+
   // Daily per-IP budget check (30 romanizations per day per IP)
   const ip = clientIp(request.headers);
   const { count } = await hit(`romanize-daily:${ip}`, 86400);
@@ -46,15 +55,6 @@ export async function GET(request: Request) {
     return Response.json(
       { error: "Daily romanization limit reached. Try again tomorrow." },
       { status: 429, headers: { "Cache-Control": "no-store" } },
-    );
-  }
-
-  const cacheKey = `${artist}|${title}`.toLowerCase();
-  const cached = memoryCache.get(cacheKey);
-  if (cached) {
-    return Response.json(
-      { romanized: cached },
-      { headers: { "Cache-Control": "public, s-maxage=604800, stale-while-revalidate=86400" } },
     );
   }
 
@@ -82,10 +82,13 @@ export async function GET(request: Request) {
 
   try {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey,
+        },
         body: JSON.stringify({
           systemInstruction: {
             parts: [{ text: SYSTEM_PROMPT }],
@@ -98,7 +101,10 @@ export async function GET(request: Request) {
           ],
           generationConfig: {
             temperature: 0.1,
-            maxOutputTokens: 2048,
+            maxOutputTokens: 8192,
+            thinkingConfig: {
+              thinkingBudget: 0,
+            },
           },
         }),
         signal: AbortSignal.timeout(10000),
