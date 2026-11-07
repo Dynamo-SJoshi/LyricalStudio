@@ -502,6 +502,7 @@ const INDEPENDENT_VOWELS: Record<string, string> = {
   "अः": "ah",
   "ऑ": "o",
   "ॲ": "e",
+  "ॐ": "om",
 };
 
 const MATRAS: Record<string, string> = {
@@ -548,6 +549,7 @@ const CONSONANTS: Record<string, string> = {
   "य": "y",
   "र": "r",
   "ल": "l",
+  "ळ": "l",
   "व": "v",
   "श": "sh",
   "ष": "sh",
@@ -840,9 +842,9 @@ function matchCase(source: string, target: string): string {
 // Public Exports
 // ============================================================================
 
-/** Detects if the string contains Indic (Devanagari/Gurmukhi) or Urdu/Arabic script */
+/** Detects if the string contains Indic (Devanagari/Gujarati/Gurmukhi) or Urdu/Arabic script */
 export function hasNonLatin(text: string): boolean {
-  return /[\u0900-\u097F\u0600-\u06FF\u0A00-\u0A7F]/.test(text);
+  return /[\u0900-\u097F\u0600-\u06FF\u0A00-\u0A7F\u0A80-\u0AFF]/.test(text);
 }
 
 /**
@@ -850,13 +852,30 @@ export function hasNonLatin(text: string): boolean {
  * that can be transliterated or romanized.
  */
 export function canTransliterateLyrics(lines: LyricLine[]): boolean {
-  const NON_LATIN_REGEX = /[\u0600-\u06FF\u0750-\u077F\u0900-\u097F\u0A00-\u0A7F\u3040-\u30FF\u4E00-\u9FFF\uAC00-\uD7AF]/;
+  const NON_LATIN_REGEX = /[\u0600-\u06FF\u0750-\u077F\u0900-\u097F\u0A00-\u0A7F\u0A80-\u0AFF\u3040-\u30FF\u4E00-\u9FFF\uAC00-\uD7AF]/;
   return lines.some((l) => NON_LATIN_REGEX.test(l.text) || l.words.some((w) => NON_LATIN_REGEX.test(w.text)));
+}
+
+/**
+ * Converts a Gujarati word to Devanagari and transliterates it using the
+ * shared phonological schwa deletion engine.
+ */
+function transliterateGujaratiWord(word: string): string {
+  const devanagari = gujaratiToDevanagari(word);
+  return transliterateDevanagariWord(devanagari);
+}
+
+function gujaratiToDevanagari(text: string): string {
+  return text.replace(/[\u0A81-\u0AF1]/g, (ch) => {
+    const code = ch.charCodeAt(0);
+    if (code === 0x0AD0) return "\u0950"; // ૐ -> ॐ
+    return String.fromCharCode(code - 0x0180);
+  });
 }
 
 /** Transliterates a single token/word */
 export function transliterateWord(token: string): string {
-  // Handle hyphenated words (e.g. बे-फ़िज़ूल, कभी-कभी, dil-e-jaan)
+  // Handle hyphenated words (e.g. बे-फ़िज़ूल, કભી-કભી, dil-e-jaan)
   if (token.includes("-")) {
     return token.split("-").map(transliterateWord).join("-");
   }
@@ -873,6 +892,8 @@ export function transliterateWord(token: string): string {
 
   if (/[\u0900-\u097F]/.test(word)) {
     converted = transliterateDevanagariWord(word);
+  } else if (/[\u0A80-\u0AFF]/.test(word)) {
+    converted = transliterateGujaratiWord(word);
   } else if (/[\u0600-\u06FF]/.test(word)) {
     converted = transliterateUrduWord(word);
   }
