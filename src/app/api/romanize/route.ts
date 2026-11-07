@@ -15,6 +15,7 @@ function containsComplexScript(lines: string[]): boolean {
 const SYSTEM_PROMPT = `You are an expert romanizer / transliterator for music lyrics.
 Your task is to transcribe (NOT translate) lyrics into Latin alphabet characters.
 - Hindi / Devanagari -> Hinglish
+- Punjabi (Gurmukhi / Shahmukhi) -> Roman Punjabi
 - Gujarati -> Roman Gujarati (Gujlish)
 - Urdu -> Roman Urdu (e.g., 'dil', 'jaise', 'badal', restoring natural unwritten short vowels in poetic context)
 - Japanese -> Rōmaji (Hepburn)
