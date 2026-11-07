@@ -7,7 +7,7 @@ export const metadata: Metadata = {
 };
 
 const REPO = "https://github.com/arijit-debug/LyricalStudio";
-const UPDATED = "November 6, 2026";
+const UPDATED = "November 7, 2026";
 
 export default function PrivacyPage() {
   return (
@@ -30,7 +30,8 @@ export default function PrivacyPage() {
         <ul className="list-disc space-y-2 pl-5">
           <li>
             <b>In your browser only</b> (never sent to us): recently played songs, liked songs, cached lyrics, per-song
-            lyric timing adjustments, your layout, volume and captions settings, and (for the current tab only) whether
+            lyric timing adjustments, romanized lyrics, your layout, volume, captions, loop and romanization settings, and
+            (for the current tab only) whether
             the lighter mode for slower computers is on. Clearing your browser&apos;s site data
             removes them.
           </li>
