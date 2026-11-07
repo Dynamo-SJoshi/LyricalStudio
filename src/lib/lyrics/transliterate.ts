@@ -857,6 +857,46 @@ export function canTransliterateLyrics(lines: LyricLine[]): boolean {
 }
 
 /**
+ * Converts a Gurmukhi (Punjabi) word to Devanagari and transliterates it using the
+ * shared phonological schwa deletion engine.
+ */
+function transliterateGurmukhiWord(word: string): string {
+  const devanagari = gurmukhiToDevanagari(word);
+  return transliterateDevanagariWord(devanagari);
+}
+
+function gurmukhiToDevanagari(text: string): string {
+  const map: Record<string, string> = {
+    "\u0A59": "\u0959", // ਖ਼ -> ख़ (kh)
+    "\u0A5A": "\u095A", // ਗ਼ -> ग़ (gh)
+    "\u0A5B": "\u095B", // ਜ਼ -> ज़ (z)
+    "\u0A5C": "\u095C", // ੜ -> ड़ (r)
+    "\u0A5E": "\u095E", // ਫ਼ -> फ़ (f)
+    "\u0A33": "\u0933", // ਲ਼ -> ळ (l)
+    "\u0A36": "\u0936", // ਸ਼ -> श (sh)
+    "\u0A70": "\u0902", // Tippi (ੰ) -> Anusvara (ं)
+    "\u0A02": "\u0902", // Bindi (ਂ) -> Anusvara (ं)
+    "\u0A74": "एक ओंकार", // Ik Onkar (ੴ)
+    "\u0A72": "", // Iri vowel bearer (ੲ)
+    "\u0A73": "", // Ura vowel bearer (ੳ)
+  };
+
+  // Handle Adhak (ੱ \u0A71): doubles the following consonant in pronunciation
+  // e.g. ਕੱਲ -> कल्ल (kall), ਗੱਡੀ -> गड्डी (gaddi), ਜੱਟ -> जट्ट (jatt)
+  const expanded = text.replace(/\u0A71([\u0A15-\u0A39\u0A59-\u0A5E])/gu, (_m, c) => c + "\u0A4D" + c);
+
+  return expanded.replace(/[\u0A01-\u0A75]/gu, (ch) => {
+    if (map[ch] !== undefined) return map[ch];
+    const code = ch.charCodeAt(0);
+    // Standard Gurmukhi-Devanagari 0x0100 offset
+    if (code >= 0x0A05 && code <= 0x0A4D) {
+      return String.fromCharCode(code - 0x0100);
+    }
+    return ch;
+  });
+}
+
+/**
  * Converts a Gujarati word to Devanagari and transliterates it using the
  * shared phonological schwa deletion engine.
  */
@@ -892,6 +932,8 @@ export function transliterateWord(token: string): string {
 
   if (/[\u0900-\u097F]/.test(word)) {
     converted = transliterateDevanagariWord(word);
+  } else if (/[\u0A00-\u0A7F]/.test(word)) {
+    converted = transliterateGurmukhiWord(word);
   } else if (/[\u0A80-\u0AFF]/.test(word)) {
     converted = transliterateGujaratiWord(word);
   } else if (/[\u0600-\u06FF]/.test(word)) {
@@ -933,4 +975,62 @@ export function transliterateLine(line: LyricLine): LyricLine {
     lang: line.lang === "hi" || line.lang === "other" ? "en" : line.lang,
     sub: line.sub ? transliterateText(line.sub) : undefined,
   };
+}
+
+/**
+ * Checks if the song contains scripts that benefit from contextual AI romanization:
+ * - Perso-Arabic Urdu (\u0600-\u06FF)
+ * - Chinese Hanzi / Japanese Kanji (\u4E00-\u9FFF)
+ * - Japanese Kana (\u3040-\u30FF)
+ * - Korean Hangul (\uAC00-\uD7AF)
+ */
+export function needsAIRomanization(lines: LyricLine[]): boolean {
+  const COMPLEX_REGEX = /[\u0600-\u06FF\u4E00-\u9FFF\u3040-\u30FF\uAC00-\uD7AF]/;
+  return lines.some((l) => COMPLEX_REGEX.test(l.text) || l.words.some((w) => COMPLEX_REGEX.test(w.text)));
+}
+
+/**
+ * Aligns AI-romanized text back with original line timing stamps.
+ */
+export function applyAIRomanization(lines: LyricLine[], aiLines: string[]): LyricLine[] {
+  if (!aiLines || aiLines.length !== lines.length) {
+    return lines.map(transliterateLine);
+  }
+  return lines.map((line, idx) => {
+    const aiText = aiLines[idx];
+    if (!aiText || !aiText.trim()) return transliterateLine(line);
+
+    const aiTokens = aiText.trim().split(/\s+/).filter(Boolean);
+    const origWords = line.words;
+
+    let words: LyricWord[];
+    if (aiTokens.length === origWords.length) {
+      // 1:1 match: keep exact timestamps!
+      words = origWords.map((w, wIdx) => ({
+        ...w,
+        text: aiTokens[wIdx],
+      }));
+    } else if (origWords.length > 0) {
+      // Proportionally interpolate timestamps across the line's span
+      const start = origWords[0].start;
+      const end = origWords[origWords.length - 1].end;
+      const span = Math.max(0.4, end - start);
+      const step = span / aiTokens.length;
+
+      words = aiTokens.map((text, wIdx) => ({
+        text,
+        start: start + wIdx * step,
+        end: start + (wIdx + 1) * step,
+      }));
+    } else {
+      words = [];
+    }
+
+    return {
+      ...line,
+      text: aiText,
+      words,
+      lang: "en",
+    };
+  });
 }
