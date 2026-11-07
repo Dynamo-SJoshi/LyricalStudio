@@ -54,7 +54,10 @@ export function SearchPanel() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`, { signal: ctrl.signal });
+        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`, {
+          signal: ctrl.signal,
+          cache: "no-store",
+        });
         const data = (await res.json()) as { tracks?: Track[]; error?: string };
         if (data.error) setError(data.error);
         setResults(data.tracks ?? []);
