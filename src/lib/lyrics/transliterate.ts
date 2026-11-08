@@ -502,6 +502,7 @@ const INDEPENDENT_VOWELS: Record<string, string> = {
   "अः": "ah",
   "ऑ": "o",
   "ॲ": "e",
+  "ॐ": "om",
 };
 
 const MATRAS: Record<string, string> = {
@@ -548,6 +549,7 @@ const CONSONANTS: Record<string, string> = {
   "य": "y",
   "र": "r",
   "ल": "l",
+  "ळ": "l",
   "व": "v",
   "श": "sh",
   "ष": "sh",
@@ -840,9 +842,9 @@ function matchCase(source: string, target: string): string {
 // Public Exports
 // ============================================================================
 
-/** Detects if the string contains Indic (Devanagari/Gurmukhi) or Urdu/Arabic script */
+/** Detects if the string contains Indic (Devanagari/Gujarati/Gurmukhi) or Urdu/Arabic script */
 export function hasNonLatin(text: string): boolean {
-  return /[\u0900-\u097F\u0600-\u06FF\u0A00-\u0A7F]/.test(text);
+  return /[\u0900-\u097F\u0600-\u06FF\u0A00-\u0A7F\u0A80-\u0AFF]/.test(text);
 }
 
 /**
@@ -850,13 +852,70 @@ export function hasNonLatin(text: string): boolean {
  * that can be transliterated or romanized.
  */
 export function canTransliterateLyrics(lines: LyricLine[]): boolean {
-  const NON_LATIN_REGEX = /[\u0600-\u06FF\u0750-\u077F\u0900-\u097F\u0A00-\u0A7F\u3040-\u30FF\u4E00-\u9FFF\uAC00-\uD7AF]/;
+  const NON_LATIN_REGEX = /[\u0600-\u06FF\u0750-\u077F\u0900-\u097F\u0A00-\u0A7F\u0A80-\u0AFF\u3040-\u30FF\u4E00-\u9FFF\uAC00-\uD7AF]/;
   return lines.some((l) => NON_LATIN_REGEX.test(l.text) || l.words.some((w) => NON_LATIN_REGEX.test(w.text)));
+}
+
+/**
+ * Converts a Gurmukhi (Punjabi) word to Devanagari and transliterates it using the
+ * shared phonological schwa deletion engine.
+ */
+function transliterateGurmukhiWord(word: string): string {
+  const devanagari = gurmukhiToDevanagari(word);
+  return transliterateDevanagariWord(devanagari);
+}
+
+function gurmukhiToDevanagari(text: string): string {
+  const map: Record<string, string> = {
+    "\u0A59": "\u0959", // ਖ਼ -> ख़ (kh)
+    "\u0A5A": "\u095A", // ਗ਼ -> ग़ (gh)
+    "\u0A5B": "\u095B", // ਜ਼ -> ज़ (z)
+    "\u0A5C": "\u095C", // ੜ -> ड़ (r)
+    "\u0A5E": "\u095E", // ਫ਼ -> फ़ (f)
+    "\u0A33": "\u0933", // ਲ਼ -> ळ (l)
+    "\u0A36": "\u0936", // ਸ਼ -> श (sh)
+    "\u0A70": "\u0902", // Tippi (ੰ) -> Anusvara (ं)
+    "\u0A02": "\u0902", // Bindi (ਂ) -> Anusvara (ं)
+    "\u0A74": "एक ओंकार", // Ik Onkar (ੴ)
+    "\u0A72": "", // Iri vowel bearer (ੲ)
+    "\u0A73": "", // Ura vowel bearer (ੳ)
+  };
+
+  // Handle Adhak (ੱ \u0A71): doubles the following consonant in pronunciation
+  // e.g. ਕੱਲ -> कल्ल (kall), ਗੱਡੀ -> गड्डी (gaddi), ਜੱਟ -> जट्ट (jatt)
+  const expanded = text.replace(/\u0A71([\u0A15-\u0A39\u0A59-\u0A5E])/gu, (_m, c) => c + "\u0A4D" + c);
+
+  return expanded.replace(/[\u0A01-\u0A75]/gu, (ch) => {
+    if (map[ch] !== undefined) return map[ch];
+    const code = ch.charCodeAt(0);
+    // Standard Gurmukhi-Devanagari 0x0100 offset
+    if (code >= 0x0A05 && code <= 0x0A4D) {
+      return String.fromCharCode(code - 0x0100);
+    }
+    return ch;
+  });
+}
+
+/**
+ * Converts a Gujarati word to Devanagari and transliterates it using the
+ * shared phonological schwa deletion engine.
+ */
+function transliterateGujaratiWord(word: string): string {
+  const devanagari = gujaratiToDevanagari(word);
+  return transliterateDevanagariWord(devanagari);
+}
+
+function gujaratiToDevanagari(text: string): string {
+  return text.replace(/[\u0A81-\u0AF1]/g, (ch) => {
+    const code = ch.charCodeAt(0);
+    if (code === 0x0AD0) return "\u0950"; // ૐ -> ॐ
+    return String.fromCharCode(code - 0x0180);
+  });
 }
 
 /** Transliterates a single token/word */
 export function transliterateWord(token: string): string {
-  // Handle hyphenated words (e.g. बे-फ़िज़ूल, कभी-कभी, dil-e-jaan)
+  // Handle hyphenated words (e.g. बे-फ़िज़ूल, કભી-કભી, dil-e-jaan)
   if (token.includes("-")) {
     return token.split("-").map(transliterateWord).join("-");
   }
@@ -873,6 +932,10 @@ export function transliterateWord(token: string): string {
 
   if (/[\u0900-\u097F]/.test(word)) {
     converted = transliterateDevanagariWord(word);
+  } else if (/[\u0A00-\u0A7F]/.test(word)) {
+    converted = transliterateGurmukhiWord(word);
+  } else if (/[\u0A80-\u0AFF]/.test(word)) {
+    converted = transliterateGujaratiWord(word);
   } else if (/[\u0600-\u06FF]/.test(word)) {
     converted = transliterateUrduWord(word);
   }

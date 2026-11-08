@@ -1,5 +1,14 @@
+import dns from "node:dns";
 import { SearchUnavailableError, searchCatalog, searchTracks } from "@/lib/search";
 import { clientIp } from "@/lib/rate-limit";
+
+if (typeof dns.setDefaultResultOrder === "function") {
+  try {
+    dns.setDefaultResultOrder("ipv4first");
+  } catch {
+    // ignore
+  }
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -14,7 +23,11 @@ export async function GET(request: Request) {
       const tracks = await searchTracks(q, typeParam, ip);
       return Response.json(
         { tracks, songs: typeParam === "song" ? tracks : [], videos: typeParam === "video" ? tracks : [] },
-        { headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" } },
+        {
+          headers: tracks.length
+            ? { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" }
+            : { "Cache-Control": "no-store" },
+        },
       );
     }
 
@@ -22,7 +35,11 @@ export async function GET(request: Request) {
     const tracks = [...songs, ...videos];
     return Response.json(
       { tracks, songs, videos },
-      { headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" } },
+      {
+        headers: tracks.length
+          ? { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400" }
+          : { "Cache-Control": "no-store" },
+      },
     );
   } catch (err) {
     console.error("search failed", err);

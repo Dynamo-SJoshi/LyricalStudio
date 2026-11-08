@@ -1,6 +1,16 @@
 import "server-only";
+import dns from "node:dns";
 import { Innertube } from "youtubei.js";
 import type { Track } from "@/lib/types";
+
+// Prefer IPv4 for outbound calls on dual-stack networks where IPv6 may blackhole or timeout
+if (typeof dns.setDefaultResultOrder === "function") {
+  try {
+    dns.setDefaultResultOrder("ipv4first");
+  } catch {
+    // ignore
+  }
+}
 
 let client: Promise<Innertube> | null = null;
 
