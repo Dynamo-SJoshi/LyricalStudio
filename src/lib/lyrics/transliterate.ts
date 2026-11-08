@@ -586,6 +586,7 @@ const VIRAMA = "\u094D"; // ्
 const ANUSVARA = "\u0902"; // ं
 const CHANDRABINDU = "\u0901"; // ँ
 const NUKTA = "\u093C"; // ़
+const VISARGA = "\u0903"; // ः
 
 type Aksara =
   | { type: "vowel"; text: string }
@@ -619,6 +620,10 @@ function transliterateDevanagariWord(rawWord: string): string {
       i++;
       if (i < clean.length && (clean[i] === ANUSVARA || clean[i] === CHANDRABINDU)) {
         v += "n";
+        i++;
+      }
+      if (i < clean.length && clean[i] === VISARGA) {
+        v += "h";
         i++;
       }
       aksaras.push({ type: "vowel", text: v });
@@ -669,6 +674,12 @@ function transliterateDevanagariWord(rawWord: string): string {
         i++;
       }
 
+      if (i < clean.length && clean[i] === VISARGA) {
+        matraText = (hasMatra ? matraText : "a") + "h";
+        hasMatra = true;
+        i++;
+      }
+
       aksaras.push({
         type: "consonant",
         cluster,
@@ -677,8 +688,11 @@ function transliterateDevanagariWord(rawWord: string): string {
         isHalant,
         isNasal,
       });
-    } else if (ch === NUKTA) {
-      // Stray nukta: skip it so it never forms a dotted circle
+    } else if (ch === VISARGA) {
+      aksaras.push({ type: "other", text: "h" });
+      i++;
+    } else if (ch === NUKTA || ch === VIRAMA || /\p{M}/u.test(ch)) {
+      // Stray nukta, virama, or unconsumed combining mark: skip it so it never forms a dotted circle
       i++;
     } else {
       aksaras.push({ type: "other", text: ch });
@@ -741,7 +755,7 @@ function transliterateDevanagariWord(rawWord: string): string {
     syllableIndex++;
   }
 
-  return matchCase(rawWord, result);
+  return matchCase(rawWord, result.replace(/\p{M}/gu, ""));
 }
 
 // ============================================================================
@@ -867,18 +881,24 @@ function transliterateGurmukhiWord(word: string): string {
 
 function gurmukhiToDevanagari(text: string): string {
   const map: Record<string, string> = {
+    "\u0A01": "\u0902", // Adak Bindi (ਁ) -> Anusvara (ं)
+    "\u0A02": "\u0902", // Bindi (ਂ) -> Anusvara (ं)
+    "\u0A03": "\u0903", // Visarga (ਃ) -> Devanagari Visarga (ः)
+    "\u0A33": "\u0933", // ਲ਼ -> ळ (l)
+    "\u0A36": "\u0936", // ਸ਼ -> श (sh)
+    "\u0A3C": "\u093C", // Nukta (਼) -> Devanagari Nukta
+    "\u0A51": "", // Udaat (ੑ) tone accent -> drop
     "\u0A59": "\u0959", // ਖ਼ -> ख़ (kh)
     "\u0A5A": "\u095A", // ਗ਼ -> ग़ (gh)
     "\u0A5B": "\u095B", // ਜ਼ -> ज़ (z)
     "\u0A5C": "\u095C", // ੜ -> ड़ (r)
     "\u0A5E": "\u095E", // ਫ਼ -> फ़ (f)
-    "\u0A33": "\u0933", // ਲ਼ -> ळ (l)
-    "\u0A36": "\u0936", // ਸ਼ -> श (sh)
     "\u0A70": "\u0902", // Tippi (ੰ) -> Anusvara (ं)
-    "\u0A02": "\u0902", // Bindi (ਂ) -> Anusvara (ं)
-    "\u0A74": "एक ओंकार", // Ik Onkar (ੴ)
+    "\u0A71": "", // Adhak (ੱ) when unconsumed (e.g. end of word) -> drop
     "\u0A72": "", // Iri vowel bearer (ੲ)
     "\u0A73": "", // Ura vowel bearer (ੳ)
+    "\u0A74": "एक ओंकार", // Ik Onkar (ੴ)
+    "\u0A75": "\u094D\u092F", // Yakash (ੵ) -> subjoined ya (्य)
   };
 
   // Handle Adhak (ੱ \u0A71): doubles the following consonant in pronunciation
@@ -940,6 +960,10 @@ export function transliterateWord(token: string): string {
     converted = transliterateUrduWord(word);
   }
 
+  // Drop any leftover combining marks (e.g. unconsumed adhak, visarga, nukta, accents)
+  // so browsers never render orphan dotted circles (◌)
+  converted = converted.replace(/\p{M}/gu, "");
+
   return leading + converted + trailing;
 }
 
@@ -948,10 +972,11 @@ export function transliterateText(text: string): string {
   if (!hasNonLatin(text)) return text;
   // Convert Arabic punctuation
   const cleanPunct = text.replace(/[،؟؛۔]/g, (p) => URDU_PUNCTUATION[p] || p);
-  return cleanPunct.replace(/[\p{L}\p{M}-]+|[^\p{L}\p{M}\s-]+|\s+/gu, (token) => {
+  const result = cleanPunct.replace(/[\p{L}\p{M}-]+|[^\p{L}\p{M}\s-]+|\s+/gu, (token) => {
     if (/^\s+$/.test(token) || /^[^\p{L}\p{M}]+$/u.test(token)) return token;
     return transliterateWord(token);
   });
+  return result.replace(/\p{M}/gu, "");
 }
 
 /**
